@@ -25,7 +25,8 @@ docs/*.pdf
 docs/*.aux
 docs/*.log
 
-# Python bytecode (from the python/ archive)
+# Python implementation (archived locally, not tracked)
+python/
 __pycache__/
 *.pyc
 
