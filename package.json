@@ -1,0 +1,26 @@
+{
+  "name": "job-apply-agent",
+  "version": "1.0.0",
+  "description": "Agentic job-hunting tool (Node.js port): crawls boards, tailors resumes with a local LLM, tracks in a JWT dashboard.",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "crawl": "node main.js crawl",
+    "status": "node main.js status",
+    "start": "node web/server.js",
+    "serve": "node web/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "openai": "^6.45.0",
+    "playwright": "^1.61.1"
+  }
+}

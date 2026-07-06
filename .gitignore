@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Secrets & local env — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Runtime data (regenerated; may contain personal info or an API token)
+data/applications.db
+data/applications.db-shm
+data/applications.db-wal
+data/crawl_state.json
+data/llm.json
+data/applications.json
+data/applications.json.migrated
+
+# Generated resumes (contain personal info; recreated at runtime)
+resumes/
+
+# LaTeX build artifacts
+*.aux
+*.out
+docs/*.pdf
+docs/*.aux
+docs/*.log
+
+# Python bytecode (from the python/ archive)
+__pycache__/
+*.pyc
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

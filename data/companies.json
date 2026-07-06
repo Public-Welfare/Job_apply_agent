@@ -1,0 +1,19 @@
+{
+  "_comment": "Company job-board tokens for the ATS public APIs. All verified to return live data. Add/remove tokens freely; each becomes part of the multi-source crawl.",
+  "greenhouse": [
+    "stripe", "airbnb", "dropbox", "coinbase", "robinhood", "databricks",
+    "gitlab", "figma", "discord", "reddit", "pinterest", "instacart", "brex"
+  ],
+  "lever": [
+    "spotify", "palantir", "gopuff"
+  ],
+  "ashby": [
+    "ramp", "notion", "openai", "linear", "cohere", "posthog"
+  ],
+  "workday": [
+    { "host": "nvidia.wd5.myworkdayjobs.com", "tenant": "nvidia", "site": "NVIDIAExternalCareerSite", "name": "NVIDIA" },
+    { "host": "adobe.wd5.myworkdayjobs.com", "tenant": "adobe", "site": "external_experienced", "name": "Adobe" },
+    { "host": "salesforce.wd12.myworkdayjobs.com", "tenant": "salesforce", "site": "External_Career_Site", "name": "Salesforce" },
+    { "host": "workday.wd5.myworkdayjobs.com", "tenant": "workday", "site": "Workday", "name": "Workday" }
+  ]
+}

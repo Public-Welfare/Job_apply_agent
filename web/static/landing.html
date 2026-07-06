@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Apsis — Your AI Job-Apply Agent</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='black'/><circle cx='50' cy='50' r='22' fill='none' stroke='white' stroke-width='6'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+/* ───────────────────────────── TOKENS ───────────────────────────── */
+:root{
+  --bg:#000000;
+  --bg-soft:#070708;
+  --panel:#0c0c0e;
+  --line:rgba(255,255,255,.08);
+  --line-strong:rgba(255,255,255,.16);
+  --text:#f4f4f5;
+  --muted:#a1a1aa;
+  --faint:#6b6b73;
+  --accent:#a78bfa;
+  --accent-deep:#7c3aed;
+  --glow:rgba(124,58,237,.45);
+  --radius:18px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --maxw:1180px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+.serif{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic}
+
+::selection{background:var(--accent-deep);color:#fff}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:#000}
+::-webkit-scrollbar-thumb{background:#1c1c20;border-radius:8px}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ───────────────────────────── NOISE / GLOW ───────────────────────────── */
+.bg-fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{
+  position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;
+  background:radial-gradient(circle at 30% 30%, var(--glow), transparent 70%);
+  animation:float 18s var(--ease) infinite alternate;
+}
+.orb.a{width:520px;height:520px;top:-160px;right:-120px}
+.orb.b{width:420px;height:420px;top:40%;left:-160px;animation-delay:-6s;opacity:.35}
+.orb.c{width:360px;height:360px;bottom:-160px;right:20%;animation-delay:-11s;opacity:.3}
+@keyframes float{
+  0%{transform:translate(0,0) scale(1)}
+  100%{transform:translate(40px,-30px) scale(1.12)}
+}
+.grain{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────── NAV ───────────────────────────── */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  transition:background .4s var(--ease),border-color .4s var(--ease),backdrop-filter .4s;
+  border-bottom:1px solid transparent;
+}
+header.scrolled{
+  background:rgba(0,0,0,.6);
+  backdrop-filter:blur(16px) saturate(140%);
+  border-bottom:1px solid var(--line);
+}
+nav{display:flex;align-items:center;justify-content:space-between;height:72px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:700;letter-spacing:-.02em;font-size:1.05rem}
+.brand .mark{
+  width:30px;height:30px;border-radius:9px;flex-shrink:0;position:relative;
+  background:linear-gradient(140deg,#fff,#bdbdc4);
+  display:grid;place-items:center;
+}
+.brand .mark::after{
+  content:"";width:13px;height:13px;border-radius:50%;
+  border:2.5px solid #000;
+}
+.nav-links{display:flex;align-items:center;gap:36px}
+.nav-links a{font-size:.9rem;color:var(--muted);transition:color .25s;position:relative}
+.nav-links a:not(.btn)::after{
+  content:"";position:absolute;left:0;bottom:-5px;height:1px;width:0;background:var(--text);
+  transition:width .3s var(--ease);
+}
+.nav-links a:not(.btn):hover{color:var(--text)}
+.nav-links a:not(.btn):hover::after{width:100%}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-weight:600;font-size:.9rem;border-radius:999px;
+  padding:11px 22px;cursor:pointer;border:1px solid transparent;
+  transition:transform .25s var(--ease),background .25s,box-shadow .25s,border-color .25s;
+  white-space:nowrap;
+}
+.btn-primary{background:#fff;color:#000}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(255,255,255,.18)}
+.btn-ghost{border-color:var(--line-strong);color:var(--text);background:transparent}
+.btn-ghost:hover{border-color:#fff;transform:translateY(-2px)}
+.btn-lg{padding:15px 30px;font-size:1rem}
+
+.hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px}
+.hamburger span{width:24px;height:2px;background:var(--text);border-radius:2px;transition:transform .3s var(--ease),opacity .3s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+.mobile-menu{
+  position:fixed;inset:72px 0 auto 0;z-index:49;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--line);
+  transform:translateY(-120%);transition:transform .45s var(--ease);
+  padding:24px;display:flex;flex-direction:column;gap:6px;
+}
+.mobile-menu.open{transform:translateY(0)}
+.mobile-menu a{padding:16px 8px;font-size:1.1rem;color:var(--muted);border-bottom:1px solid var(--line)}
+.mobile-menu a:last-of-type{border:none}
+.mobile-menu .btn{margin-top:14px;justify-content:center}
+
+/* ───────────────────────────── REVEAL ───────────────────────────── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.reveal[data-d="1"]{transition-delay:.08s}
+.reveal[data-d="2"]{transition-delay:.16s}
+.reveal[data-d="3"]{transition-delay:.24s}
+.reveal[data-d="4"]{transition-delay:.32s}
+
+/* ───────────────────────────── HERO ───────────────────────────── */
+main{position:relative;z-index:2}
+.hero{padding:170px 0 110px;text-align:center;position:relative}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;
+  font-size:.78rem;font-weight:500;letter-spacing:.02em;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:7px 15px;margin-bottom:30px;
+  background:rgba(255,255,255,.02);
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.hero h1{
+  font-size:clamp(2.7rem,7vw,5.4rem);
+  line-height:1.02;font-weight:800;letter-spacing:-.04em;
+  margin:0 auto 26px;max-width:14ch;
+}
+.hero h1 .serif{font-weight:400;letter-spacing:-.01em}
+.hero p.sub{
+  font-size:clamp(1.05rem,2.2vw,1.3rem);color:var(--muted);
+  max-width:54ch;margin:0 auto 40px;line-height:1.6;
+}
+.hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero-note{margin-top:22px;font-size:.82rem;color:var(--faint)}
+
+/* shimmering headline word */
+.shine{
+  background:linear-gradient(100deg,#fff 20%,#8b6fe8 40%,#fff 60%);
+  background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 5s linear infinite;
+}
+@keyframes shine{to{background-position:200% center}}
+
+/* product preview */
+.preview{
+  margin:74px auto 0;max-width:960px;position:relative;
+  border-radius:22px;border:1px solid var(--line-strong);
+  background:linear-gradient(180deg,#0d0d10,#070708);
+  box-shadow:0 40px 120px -30px var(--glow),0 30px 80px -40px rgba(0,0,0,.9);
+  overflow:hidden;
+}
+.preview::before{
+  content:"";position:absolute;inset:0;border-radius:22px;padding:1px;
+  background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+}
+.pv-bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.pv-bar i{width:11px;height:11px;border-radius:50%;background:#26262b;display:inline-block}
+.pv-url{margin-left:14px;font-size:.74rem;color:var(--faint);font-family:ui-monospace,monospace}
+.pv-body{padding:26px;display:grid;gap:14px}
+.pv-row{
+  display:flex;align-items:center;gap:16px;padding:16px 18px;
+  border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.015);
+  opacity:0;transform:translateX(-12px);
+  animation:rowIn .7s var(--ease) forwards;
+}
+.pv-row:nth-child(1){animation-delay:.6s}
+.pv-row:nth-child(2){animation-delay:.78s}
+.pv-row:nth-child(3){animation-delay:.96s}
+@keyframes rowIn{to{opacity:1;transform:none}}
+.pv-ava{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;font-weight:700;font-size:.9rem;color:#000}
+.pv-meta{flex:1;min-width:0;text-align:left}
+.pv-meta b{display:block;font-size:.92rem;font-weight:600}
+.pv-meta span{font-size:.78rem;color:var(--faint)}
+.pv-badge{font-size:.68rem;font-weight:700;padding:5px 11px;border-radius:999px;white-space:nowrap}
+
+/* ───────────────────────────── MARQUEE ───────────────────────────── */
+.marquee-sec{padding:46px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden}
+.marquee-label{text-align:center;font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:26px}
+.marquee{display:flex;gap:64px;width:max-content;animation:scroll 26s linear infinite}
+.marquee:hover{animation-play-state:paused}
+.marquee span{font-size:1.35rem;font-weight:700;letter-spacing:-.02em;color:#3a3a42;white-space:nowrap;transition:color .3s}
+.marquee span:hover{color:var(--text)}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+/* ───────────────────────────── SECTION HEAD ───────────────────────────── */
+section{position:relative;z-index:2}
+.s-head{max-width:640px;margin-bottom:64px}
+.s-head.center{margin-inline:auto;text-align:center}
+.s-tag{font-size:.76rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:18px;display:block}
+.s-head h2{font-size:clamp(2rem,4.5vw,3.2rem);letter-spacing:-.035em;font-weight:800;line-height:1.05;margin-bottom:18px}
+.s-head p{font-size:1.08rem;color:var(--muted);line-height:1.6}
+
+/* ───────────────────────────── FEATURES (editorial rows, not cards) ─────── */
+.features{padding:120px 0}
+.feat-row{
+  display:grid;grid-template-columns:90px 1fr auto;gap:34px;align-items:start;
+  padding:42px 0;border-top:1px solid var(--line);
+  transition:padding-left .5s var(--ease);
+}
+.feat-row:last-child{border-bottom:1px solid var(--line)}
+.feat-row:hover{padding-left:14px}
+.feat-row .idx{font-size:1.05rem;color:var(--faint);font-weight:600;font-variant-numeric:tabular-nums;padding-top:6px}
+.feat-row h3{font-size:clamp(1.4rem,2.6vw,2rem);letter-spacing:-.025em;font-weight:700;margin-bottom:12px;transition:color .3s}
+.feat-row:hover h3{color:var(--accent)}
+.feat-row p{color:var(--muted);max-width:52ch;line-height:1.65;font-size:1rem}
+.feat-row .arrow{
+  width:46px;height:46px;border-radius:50%;border:1px solid var(--line-strong);
+  display:grid;place-items:center;color:var(--muted);flex-shrink:0;margin-top:4px;
+  transition:transform .4s var(--ease),background .3s,color .3s,border-color .3s;
+}
+.feat-row:hover .arrow{transform:rotate(45deg);background:#fff;color:#000;border-color:#fff}
+
+/* ───────────────────────────── STEPS ───────────────────────────── */
+.steps{padding:120px 0;background:
+  radial-gradient(700px 400px at 50% 0%, rgba(124,58,237,.08), transparent 70%)}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;position:relative}
+.step{padding:40px 32px;position:relative}
+.step:not(:last-child)::after{
+  content:"";position:absolute;top:60px;right:0;width:1px;height:calc(100% - 80px);background:var(--line);
+}
+.step .n{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:3.4rem;line-height:1;color:var(--accent);margin-bottom:22px;display:block;
+}
+.step h4{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+.step p{color:var(--muted);line-height:1.6;font-size:.98rem}
+
+/* ───────────────────────────── METRICS ───────────────────────────── */
+.metrics{padding:90px 0;border-top:1px solid var(--line)}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px;text-align:center}
+.metric .num{font-size:clamp(2.4rem,5vw,3.6rem);font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.metric .lbl{margin-top:12px;font-size:.86rem;color:var(--muted)}
+
+/* ───────────────────────────── CTA ───────────────────────────── */
+.cta{padding:130px 0}
+.cta-inner{
+  position:relative;border:1px solid var(--line-strong);border-radius:28px;
+  padding:84px 40px;text-align:center;overflow:hidden;
+  background:linear-gradient(180deg,#0c0c0f,#000);
+}
+.cta-inner::before{
+  content:"";position:absolute;width:600px;height:600px;border-radius:50%;
+  top:-340px;left:50%;transform:translateX(-50%);
+  background:radial-gradient(circle,var(--glow),transparent 65%);opacity:.5;
+}
+.cta-inner h2{position:relative;font-size:clamp(2.2rem,5vw,3.6rem);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-bottom:22px}
+.cta-inner p{position:relative;color:var(--muted);max-width:48ch;margin:0 auto 38px;font-size:1.1rem}
+.cta-inner .hero-cta{position:relative}
+
+/* ───────────────────────────── FOOTER ───────────────────────────── */
+footer{border-top:1px solid var(--line);padding:54px 0 40px}
+.foot-top{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:44px}
+.foot-brand{max-width:280px}
+.foot-brand p{color:var(--faint);font-size:.9rem;margin-top:16px;line-height:1.6}
+.foot-cols{display:flex;gap:72px;flex-wrap:wrap}
+.foot-col h5{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:18px}
+.foot-col a{display:block;color:var(--muted);font-size:.92rem;padding:6px 0;transition:color .25s}
+.foot-col a:hover{color:var(--text)}
+.foot-bot{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:28px;border-top:1px solid var(--line);flex-wrap:wrap}
+.foot-bot p{font-size:.84rem;color:var(--faint)}
+
+/* ───────────────────────────── RESPONSIVE ───────────────────────────── */
+@media(max-width:880px){
+  .nav-links{display:none}
+  .hamburger{display:flex}
+  .feat-row{grid-template-columns:46px 1fr;gap:20px}
+  .feat-row .arrow{display:none}
+  .steps-grid{grid-template-columns:1fr}
+  .step:not(:last-child)::after{display:none}
+  .step{border-bottom:1px solid var(--line);padding:34px 0}
+  .step:last-child{border:none}
+  .metrics-grid{grid-template-columns:repeat(2,1fr);gap:48px 24px}
+}
+@media(max-width:480px){
+  .wrap{padding:0 20px}
+  .hero{padding:140px 0 80px}
+  .hero-cta .btn{width:100%;justify-content:center}
+  .pv-body{padding:16px}
+  .pv-meta span{font-size:.72rem}
+  .cta-inner{padding:60px 24px}
+  .metrics-grid{grid-template-columns:1fr 1fr;gap:38px 18px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- background fx -->
+<div class="bg-fx" aria-hidden="true">
+  <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- NAV -->
+<header id="header">
+  <div class="wrap">
+    <nav>
+      <a href="#top" class="brand"><span class="mark"></span>Apsis</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#proof">Results</a>
+        <a href="/dashboard" class="btn btn-ghost">Open Dashboard</a>
+        <a href="/dashboard" class="btn btn-primary">Start Free</a>
+      </div>
+      <button class="hamburger" id="burger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features">Features</a>
+  <a href="#how">How it works</a>
+  <a href="#proof">Results</a>
+  <a href="/dashboard" class="btn btn-primary">Open Dashboard</a>
+</div>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow reveal"><span class="dot"></span> Runs locally · Your data never leaves your machine</span>
+      <h1 class="reveal" data-d="1">
+        Stop applying.<br>Start <span class="shine">getting hired</span>.
+      </h1>
+      <p class="sub reveal" data-d="2">
+        Apsis is the AI agent that hunts job boards, rewrites your résumé for every
+        single role, and tracks each application — while you focus on the interviews that matter.
+      </p>
+      <div class="hero-cta reveal" data-d="3">
+        <a href="/dashboard" class="btn btn-primary btn-lg">Launch your agent →</a>
+        <a href="#how" class="btn btn-ghost btn-lg">See how it works</a>
+      </div>
+      <p class="hero-note reveal" data-d="4">No credit card. No cloud. Powered by your own local LLM.</p>
+
+      <!-- product preview -->
+      <div class="preview reveal" data-d="2">
+        <div class="pv-bar">
+          <i></i><i></i><i></i>
+          <span class="pv-url">apsis.local / dashboard</span>
+        </div>
+        <div class="pv-body">
+          <div class="pv-row">
+            <div class="pv-ava" style="background:linear-gradient(135deg,#a78bfa,#4c1d95)">M</div>
+            <div class="pv-meta"><b>Software Engineering Intern</b><span>Monkh AI · Bengaluru · Indeed</span></div>
+            <span class="pv-badge" style="background:rgba(63,185,80,.16);color:#5fd17a">Résumé tailored</span>
+          </div>
+          <div class="pv-row">
+            <div class="pv-ava" style="background:linear-gradient(135deg,#60a5fa,#1e3a8a)">B</div>
+            <div class="pv-meta"><b>Backend Developer</b><span>BitPay · Remote · RemoteOK</span></div>
+            <span class="pv-badge" style="background:rgba(56,139,253,.16);color:#7cb6ff">Applied</span>
+          </div>
+          <div class="pv-row">
+            <div class="pv-ava" style="background:linear-gradient(135deg,#f0abfc,#86198f)">S</div>
+            <div class="pv-meta"><b>AI / ML Intern</b><span>Scaling Up · Remote · RemoteOK</span></div>
+            <span class="pv-badge" style="background:rgba(227,179,65,.16);color:#f1c95b">Interview</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee-sec">
+    <p class="marquee-label">One agent. Every board worth applying to.</p>
+    <div class="marquee">
+      <span>Indeed</span><span>RemoteOK</span><span>LinkedIn</span><span>Naukri</span>
+      <span>Wellfound</span><span>YC Jobs</span><span>Indeed</span><span>RemoteOK</span>
+      <span>LinkedIn</span><span>Naukri</span><span>Wellfound</span><span>YC Jobs</span>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="wrap">
+      <div class="s-head reveal">
+        <span class="s-tag">The unfair advantage</span>
+        <h2>Everything a recruiter wishes you did — automated.</h2>
+        <p>You were never lazy. You were outnumbered. Apsis levels the field with an agent that works the job hunt like a full-time operator.</p>
+      </div>
+
+      <div class="feat-row reveal">
+        <span class="idx">01</span>
+        <div>
+          <h3>Finds the roles you'd miss</h3>
+          <p>Apsis crawls multiple boards in parallel, filters out the bonds, the on-site traps, and the keyword spam — surfacing only the roles that actually fit your goals.</p>
+        </div>
+        <span class="arrow">↗</span>
+      </div>
+      <div class="feat-row reveal">
+        <span class="idx">02</span>
+        <div>
+          <h3>Rewrites your résumé per job</h3>
+          <p>Every listing gets its own tailored résumé. The agent mirrors the job's language, reorders your strengths, and exports a polished PDF — truthfully, never inventing experience.</p>
+        </div>
+        <span class="arrow">↗</span>
+      </div>
+      <div class="feat-row reveal">
+        <span class="idx">03</span>
+        <div>
+          <h3>Tracks every application for you</h3>
+          <p>Applied, interviewing, offer, rejected — your entire pipeline lives in one clean dashboard, backed by a real database. No more spreadsheets that rot by week two.</p>
+        </div>
+        <span class="arrow">↗</span>
+      </div>
+      <div class="feat-row reveal">
+        <span class="idx">04</span>
+        <div>
+          <h3>Stays completely private</h3>
+          <p>Runs on your machine with your own local model. Your résumé, your history, your search — none of it is ever uploaded, sold, or used to train someone else's product.</p>
+        </div>
+        <span class="arrow">↗</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="steps" id="how">
+    <div class="wrap">
+      <div class="s-head center reveal">
+        <span class="s-tag">From zero to applied in minutes</span>
+        <h2>Three steps. Then it runs itself.</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step reveal" data-d="1">
+          <span class="n">01</span>
+          <h4>Tell it who you are</h4>
+          <p>Drop in your profile once — skills, experience, target roles and the red flags to avoid. The agent learns what a great match looks like for you.</p>
+        </div>
+        <div class="step reveal" data-d="2">
+          <span class="n">02</span>
+          <h4>Hit “Crawl”</h4>
+          <p>Apsis fans out across the boards, scores each listing against your preferences, and quietly tailors a résumé for every role that clears the bar.</p>
+        </div>
+        <div class="step reveal" data-d="3">
+          <span class="n">03</span>
+          <h4>Work your pipeline</h4>
+          <p>Open the dashboard, expand any match to see the keywords it hit, download the PDF, and move candidates from Applied to Offer with a click.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRICS -->
+  <section class="metrics" id="proof">
+    <div class="wrap">
+      <div class="metrics-grid">
+        <div class="metric reveal" data-d="1"><div class="num" data-count="40">0</div><div class="lbl">Roles screened per run</div></div>
+        <div class="metric reveal" data-d="2"><div class="num" data-count="100" data-suffix="%">0</div><div class="lbl">Résumés tailored, not generic</div></div>
+        <div class="metric reveal" data-d="3"><div class="num" data-count="0" data-suffix="₹">0</div><div class="lbl">Sent to the cloud, ever</div></div>
+        <div class="metric reveal" data-d="4"><div class="num" data-count="9">0</div><div class="lbl">Hours saved every week</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-inner reveal">
+        <h2>Your next role is already posted.<br>Let your agent go get it.</h2>
+        <p>Set it up once tonight. Wake up to a pipeline of tailored applications tomorrow.</p>
+        <div class="hero-cta">
+          <a href="/dashboard" class="btn btn-primary btn-lg">Open the dashboard →</a>
+          <a href="#features" class="btn btn-ghost btn-lg">Explore features</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a href="#top" class="brand"><span class="mark"></span>Apsis</a>
+        <p>The local-first AI agent that turns the job hunt from a second job into a single click.</p>
+      </div>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h5>Product</h5>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="/dashboard">Dashboard</a>
+        </div>
+        <div class="foot-col">
+          <h5>Resources</h5>
+          <a href="#">Documentation</a>
+          <a href="#">Local setup</a>
+          <a href="#">Privacy</a>
+        </div>
+        <div class="foot-col">
+          <h5>Connect</h5>
+          <a href="#">GitHub</a>
+          <a href="#">Changelog</a>
+          <a href="#">Contact</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <p>© 2026 Apsis. Built to be yours, on your machine.</p>
+      <p>Crafted with deliberate restraint.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---- sticky header ---- */
+const header = document.getElementById('header');
+const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 24);
+onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+
+/* ---- mobile menu ---- */
+const burger = document.getElementById('burger');
+const menu = document.getElementById('mobileMenu');
+const toggleMenu = (open) => {
+  const next = open ?? !menu.classList.contains('open');
+  menu.classList.toggle('open', next);
+  burger.classList.toggle('open', next);
+  document.body.style.overflow = next ? 'hidden' : '';
+};
+burger.addEventListener('click', () => toggleMenu());
+menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleMenu(false)));
+
+/* ---- smooth anchor scroll (with header offset) ---- */
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', e => {
+    const id = link.getAttribute('href');
+    if (id.length < 2) return;
+    const target = document.querySelector(id);
+    if (!target) return;
+    e.preventDefault();
+    const y = target.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo({top:y, behavior:'smooth'});
+  });
+});
+
+/* ---- scroll reveal ---- */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+  });
+}, {threshold:0.14, rootMargin:'0px 0px -8% 0px'});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ---- count-up metrics ---- */
+const countIO = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const el = en.target;
+    const to = parseInt(el.dataset.count, 10);
+    const suffix = el.dataset.suffix || '';
+    const prefix = suffix === '₹' ? '' : '';
+    const dur = 1400, t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - t0) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 4);
+      const val = Math.round(to * eased);
+      el.textContent = suffix === '₹' ? '₹' + val : val + (suffix && suffix !== '₹' ? suffix : '');
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    countIO.unobserve(el);
+  });
+}, {threshold:0.6});
+document.querySelectorAll('[data-count]').forEach(el => countIO.observe(el));
+</script>
+</body>
+</html>

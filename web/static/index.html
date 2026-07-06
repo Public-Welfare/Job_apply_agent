@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apsis — Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='black'/><circle cx='50' cy='50' r='22' fill='none' stroke='white' stroke-width='6'/></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg:        #000000;
+      --surface:   #0c0c0e;
+      --elevated:  #141417;
+      --border:    rgba(255,255,255,.08);
+      --border-h:  rgba(255,255,255,.18);
+      --text:      #f4f4f5;
+      --muted:     #a1a1aa;
+      --faint:     #6b6b73;
+      --accent:    #a78bfa;
+      --accent-h:  #8b5cf6;
+      --accent-deep:#7c3aed;
+      --glow:      rgba(124,58,237,.4);
+      --ease:      cubic-bezier(.22,1,.36,1);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .serif { font-family: 'Instrument Serif', serif; font-weight: 400; font-style: italic; }
+
+    /* animated background field — mirrors the landing page */
+    .bg-fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5;
+      background: radial-gradient(circle at 30% 30%, var(--glow), transparent 70%);
+      animation: float 18s var(--ease) infinite alternate;
+    }
+    .orb.a { width: 520px; height: 520px; top: -200px; right: -120px; }
+    .orb.b { width: 420px; height: 420px; top: 38%; left: -180px; animation-delay: -6s; opacity: .3; }
+    .orb.c { width: 360px; height: 360px; bottom: -180px; right: 18%; animation-delay: -11s; opacity: .25; }
+    @keyframes float { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(40px,-30px) scale(1.12); } }
+    .grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .03;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    header, main { position: relative; z-index: 2; }
+    ::selection { background: var(--accent-deep); color: #fff; }
+
+    .stat-ico {
+      width: 34px; height: 34px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .stat-card { cursor: pointer; transition: transform .18s cubic-bezier(.34,1.56,.64,1), border-color .15s, box-shadow .2s; }
+    .stat-card:hover { border-color: var(--border-h) !important; transform: translateY(-3px); }
+    .stat-card:hover .stat-ico { transform: scale(1.08) rotate(-3deg); }
+    .stat-ico { transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+    .stat-card.active {
+      border-color: rgba(124,58,237,.5) !important;
+      box-shadow: 0 0 0 1px rgba(124,58,237,.35), 0 8px 24px rgba(124,58,237,.12);
+    }
+
+    /* Job card hover lift */
+    .job-card { transition: transform .18s ease, border-color .15s, box-shadow .2s; }
+    .job-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 36px rgba(0,0,0,.45);
+      border-color: var(--border-h);
+    }
+    .chevron { transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+
+    /* 2-line clamp (fallback in case the CDN build omits line-clamp utilities) */
+    .line-clamp-2 {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Keyword chips pop in when a card expands */
+    @keyframes chipPop { from { opacity:0; transform:scale(.8) } to { opacity:1; transform:scale(1) } }
+    .job-expand .kw-chip { animation: chipPop .25s ease-out both; }
+
+    /* Stat number flip when it changes */
+    @keyframes numPulse { 0%{ transform:translateY(4px); opacity:.3 } 100%{ transform:translateY(0); opacity:1 } }
+    .num-bump { animation: numPulse .3s ease-out; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-h); }
+
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes slideIn  { from { opacity:0; transform:translateX(16px) } to { opacity:1; transform:translateX(0) } }
+    @keyframes dropIn   { from { opacity:0; transform:translateY(-6px) scale(.97) } to { opacity:1; transform:translateY(0) scale(1) } }
+    @keyframes spinPulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .card-anim  { animation: fadeUp  .22s ease-out both; }
+    .toast-anim { animation: slideIn .22s ease-out both; }
+    .drop-anim  { animation: dropIn  .15s ease-out both; }
+
+    .tab-pill {
+      padding: .375rem 1rem;
+      border-radius: 9999px;
+      font-size: .75rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .tab-pill:hover { color: var(--text); border-color: var(--border-h); }
+    .tab-pill.active {
+      background: rgba(124,58,237,.18);
+      color: #a78bfa;
+      border-color: rgba(124,58,237,.4);
+    }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: .375rem;
+      padding: .25rem .625rem;
+      border-radius: 9999px;
+      font-size: .7rem; font-weight: 600;
+      cursor: pointer; user-select: none;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .status-badge:hover { opacity: .8; }
+
+    .action-btn {
+      padding: .375rem;
+      border-radius: .5rem;
+      color: var(--faint);
+      transition: color .15s, background .15s;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .action-btn:hover { color: var(--text); background: var(--border); }
+    .action-btn.danger:hover { color: #f87171; background: rgba(248,81,73,.1); }
+
+    .log-line { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.7; }
+    .log-line.web  { color: #a78bfa; }
+    .log-line.ok   { color: #3fb950; }
+    .log-line.err  { color: #f85149; }
+    .log-line.dim  { color: var(--faint); }
+
+    #log-output { scrollbar-width: thin; }
+
+    .input-field {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: .875rem;
+      padding: .55rem .95rem;
+      transition: border-color .2s, background .2s;
+      outline: none;
+    }
+    .input-field::placeholder { color: var(--faint); }
+    .input-field:focus { border-color: var(--border-h); background: rgba(255,255,255,.05); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #fff; color: #000;
+      padding: .55rem 1.15rem;
+      border-radius: 999px;
+      font-size: .875rem; font-weight: 600;
+      transition: transform .25s var(--ease), box-shadow .25s;
+      cursor: pointer; border: 1px solid transparent;
+    }
+    .btn-primary:hover  { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(255,255,255,.16); }
+    .btn-primary:active { transform: translateY(0) scale(.98); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: .4rem;
+      color: var(--text);
+      padding: .55rem 1.05rem;
+      border-radius: 999px;
+      font-size: .875rem; font-weight: 500;
+      border: 1px solid var(--border-h);
+      transition: transform .25s var(--ease), border-color .2s, background .2s;
+      cursor: pointer; background: transparent;
+    }
+    .btn-ghost:hover { border-color: #fff; transform: translateY(-2px); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-box {
+      background: linear-gradient(180deg,#0d0d10,#070708);
+      border: 1px solid var(--border-h);
+      border-radius: 22px;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 40px 100px -30px var(--glow), 0 30px 80px -40px rgba(0,0,0,.9);
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .source-badge {
+      display: inline-block;
+      padding: .1rem .4rem;
+      border-radius: .25rem;
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--elevated) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: .5rem;
+    }
+    @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+<!-- animated background -->
+<div class="bg-fx" aria-hidden="true">
+  <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ── HEADER ───────────────────────────────────────────────────────────── -->
+<header style="background:rgba(0,0,0,.55);backdrop-filter:blur(16px) saturate(140%);border-bottom:1px solid var(--border)"
+  class="fixed top-0 left-0 right-0 z-40 h-14 px-5 flex items-center justify-between">
+
+  <a href="/" class="flex items-center gap-2.5 group">
+    <span class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative"
+      style="background:linear-gradient(140deg,#fff,#bdbdc4)">
+      <span class="block w-3 h-3 rounded-full" style="border:2.5px solid #000"></span>
+    </span>
+    <span class="font-bold text-sm tracking-tight" style="color:var(--text)">Apsis</span>
+  </a>
+
+  <div class="flex items-center gap-3">
+    <div id="crawl-indicator" class="hidden items-center gap-2 text-xs" style="color:#e3b341">
+      <span class="w-2 h-2 rounded-full inline-block" style="background:#e3b341;animation:spinPulse 1.2s ease infinite"></span>
+      Crawl running…
+    </div>
+    <button class="btn-ghost" onclick="Discover.open()" title="Browse open roles from all sources by job type">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
+      </svg>
+      Discover
+    </button>
+    <button class="btn-ghost" onclick="openImportModal()" title="Import a LaTeX resume into the template">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"/>
+      </svg>
+      Import Resume
+    </button>
+    <button class="btn-primary" onclick="UI.openCrawlModal()">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      New Crawl
+    </button>
+    <button class="btn-ghost" onclick="logout()" title="Sign out">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ── MAIN ─────────────────────────────────────────────────────────────── -->
+<main class="pt-14 max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+
+  <!-- Page heading -->
+  <div class="mt-9 mb-6">
+    <h1 class="font-extrabold tracking-tight" style="color:var(--text);font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.03em">
+      Your application <span class="serif" style="color:var(--accent)">pipeline</span>
+    </h1>
+    <p class="text-sm mt-1" style="color:var(--muted)">Every role your agent finds, tailors, and tracks — in one place.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-7" id="stats-row">
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(124,58,237,.15);color:#a78bfa">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none" id="s-total" style="color:var(--text)">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">Total</span>
+      </span>
+    </button>
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="applied" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(56,139,253,.15);color:#388bfd">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none text-blue-400" id="s-applied">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">Applied</span>
+      </span>
+    </button>
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="not_applied" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(139,148,158,.15);color:#9ca3af">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none" id="s-not_applied" style="color:#9ca3af">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">To Apply</span>
+      </span>
+    </button>
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="interview" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(227,179,65,.15);color:#e3b341">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l3.586-3.586z"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none text-amber-400" id="s-interview">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">Interview</span>
+      </span>
+    </button>
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="offer" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(63,185,80,.15);color:#3fb950">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none text-emerald-400" id="s-offer">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">Offers</span>
+      </span>
+    </button>
+    <button class="stat-card group rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+      data-status="rejected" style="background:var(--surface);border:1px solid var(--border)">
+      <span class="stat-ico" style="background:rgba(248,81,73,.15);color:#f85149">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </span>
+      <span class="flex flex-col">
+        <span class="text-xl font-bold leading-none text-red-400" id="s-rejected">—</span>
+        <span class="text-[10px] font-semibold uppercase tracking-widest mt-1" style="color:var(--faint)">Rejected</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <div class="relative flex-1 min-w-[180px]">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style="color:var(--faint)"
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input id="search-input" type="text" placeholder="Search title or company…"
+        class="input-field w-full pl-9" />
+    </div>
+    <select id="source-select" class="input-field">
+      <option value="">All sources</option>
+      <option value="Indeed India">Indeed</option>
+      <option value="RemoteOK">RemoteOK</option>
+    </select>
+    <select id="sort-select" class="input-field">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+    </select>
+  </div>
+
+  <!-- Status tabs -->
+  <div class="flex gap-2 mb-5 flex-wrap">
+    <button class="tab-pill active" data-status="">All</button>
+    <button class="tab-pill" data-status="applied">Applied</button>
+    <button class="tab-pill" data-status="not_applied">Not Applied</button>
+    <button class="tab-pill" data-status="interview">Interview</button>
+    <button class="tab-pill" data-status="offer">Offer</button>
+    <button class="tab-pill" data-status="rejected">Rejected</button>
+  </div>
+
+  <!-- Job grid -->
+  <div id="job-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start"></div>
+
+</main>
+
+<!-- ── CRAWL MODAL ───────────────────────────────────────────────────────── -->
+<div id="crawl-modal" class="modal-backdrop hidden" onclick="UI.backdropClose(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between p-5" style="border-bottom:1px solid var(--border)">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+          <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <h2 class="font-semibold text-sm" style="color:var(--text)">New Crawl</h2>
+      </div>
+      <button class="action-btn" onclick="UI.closeCrawlModal()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Pre-crawl -->
+    <div id="crawl-pre" class="p-5">
+      <p class="text-sm mb-5" style="color:var(--muted)">
+        Launches the agent to search Indeed India + RemoteOK, filters by your preferences,
+        tailors your resume via Ollama, and generates PDFs.
+      </p>
+      <div class="rounded-lg p-4 mb-5 text-sm space-y-2.5" style="background:var(--elevated);border:1px solid var(--border)">
+        <div class="flex items-center gap-2.5" style="color:var(--muted)">
+          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          Roles &amp; locations pulled from <code class="text-xs px-1 py-0.5 rounded" style="background:var(--border);color:var(--text)">data/profile.json</code>
+        </div>
+        <div class="flex items-center gap-2.5" style="color:var(--muted)">
+          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          Blacklisted keywords &amp; companies are auto-skipped
+        </div>
+        <div class="flex items-center gap-2.5" style="color:var(--muted)">
+          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          Already-applied jobs are skipped automatically
+        </div>
+      </div>
+
+      <!-- Role multi-select -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-widest" style="color:var(--faint)">Roles to crawl</span>
+          <button type="button" class="text-xs font-medium" style="color:var(--accent)" onclick="UI.toggleAllRoles()">Toggle all</button>
+        </div>
+        <div id="crawl-roles" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto"></div>
+      </div>
+
+      <!-- 24h gate notice (shown to non-admins when a crawl ran recently) -->
+      <div id="crawl-gate" class="hidden mb-4 px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+        style="background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.35);color:#e3b341">
+        <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V7z" clip-rule="evenodd"/></svg>
+        <span id="crawl-gate-msg"></span>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button class="btn-ghost" onclick="UI.closeCrawlModal()">Cancel</button>
+        <button id="btn-start-crawl" class="btn-primary" onclick="App.startCrawl()">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          Start Crawl
+        </button>
+      </div>
+    </div>
+
+    <!-- Live log -->
+    <div id="crawl-log" class="p-5 hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span id="log-dot" class="w-2 h-2 rounded-full inline-block" style="background:#e3b341;animation:spinPulse 1.2s ease infinite"></span>
+          <span id="log-label" class="text-xs" style="color:var(--muted)">Running…</span>
+        </div>
+        <button id="btn-log-close" class="hidden text-xs btn-ghost py-1 px-2" onclick="UI.closeCrawlModal()">Close</button>
+      </div>
+      <div id="log-output"
+        class="rounded-lg p-4 h-60 overflow-y-auto space-y-px"
+        style="background:#0d1117;border:1px solid var(--border)">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── DISCOVER MODAL ────────────────────────────────────────────────────── -->
+<div id="discover-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+  style="background:rgba(0,0,0,.6);backdrop-filter:blur(4px)" onclick="Discover.backdrop(event)">
+  <div class="w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col"
+    style="background:var(--surface);border:1px solid var(--border-h);max-height:88vh" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 flex-shrink-0" style="border-bottom:1px solid var(--border)">
+      <div class="flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(167,139,250,.15);color:#a78bfa">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10"/></svg>
+        </span>
+        <span class="font-bold text-sm" style="color:var(--text)">Discover jobs by type</span>
+      </div>
+      <button class="action-btn" onclick="Discover.close()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Controls -->
+    <div class="px-5 py-4 space-y-3 flex-shrink-0" style="border-bottom:1px solid var(--border)">
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="disc-refresh" class="btn-primary" onclick="Discover.refresh()">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh from all sources
+        </button>
+        <span id="disc-status" class="text-xs" style="color:var(--muted)"></span>
+        <div class="relative flex-1 min-w-[160px]">
+          <input id="disc-search" type="text" placeholder="Filter title or company…" class="input-field w-full" />
+        </div>
+      </div>
+      <div id="disc-types" class="flex flex-wrap gap-1.5"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="disc-results" class="p-5 overflow-y-auto" style="min-height:200px"></div>
+  </div>
+</div>
+
+<style>
+  .disc-chip {
+    padding: .3rem .7rem; border-radius: 9999px; font-size: .72rem; font-weight: 600;
+    color: var(--muted); background: var(--elevated); border: 1px solid var(--border);
+    cursor: pointer; transition: all .12s; white-space: nowrap;
+  }
+  .disc-chip:hover { border-color: var(--border-h); color: var(--text); }
+  .disc-chip.active { background: rgba(124,58,237,.18); border-color: rgba(124,58,237,.5); color: #c4b5fd; }
+  .disc-chip .c { opacity: .55; margin-left: .35rem; font-variant-numeric: tabular-nums; }
+  .disc-src {
+    font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: .1rem .4rem; border-radius: 5px; background: rgba(167,139,250,.14); color: #a78bfa;
+  }
+  .disc-tag {
+    font-size: .62rem; font-weight: 600; padding: .1rem .4rem; border-radius: 5px;
+    background: var(--border); color: var(--muted);
+  }
+</style>
+
+<!-- ── STATUS DROPDOWN ───────────────────────────────────────────────────── -->
+<div id="status-dd" class="hidden fixed z-[60] rounded-xl py-1.5 w-40 drop-anim shadow-2xl"
+  style="background:var(--elevated);border:1px solid var(--border-h)">
+  <button class="dd-item" onclick="App.setStatus('not_applied')">
+    <span class="w-2 h-2 rounded-full" style="background:#6b7280"></span> Not Applied
+  </button>
+  <button class="dd-item" onclick="App.setStatus('applied')">
+    <span class="w-2 h-2 rounded-full bg-blue-400"></span> Applied
+  </button>
+  <button class="dd-item" onclick="App.setStatus('interview')">
+    <span class="w-2 h-2 rounded-full bg-amber-400"></span> Interview
+  </button>
+  <button class="dd-item" onclick="App.setStatus('offer')">
+    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Offer
+  </button>
+  <button class="dd-item" onclick="App.setStatus('rejected')">
+    <span class="w-2 h-2 rounded-full bg-red-400"></span> Rejected
+  </button>
+</div>
+
+<style>
+  .dd-item {
+    display: flex; align-items: center; gap: .5rem;
+    width: 100%; text-align: left;
+    padding: .5rem 1rem;
+    font-size: .8rem; color: var(--text);
+    transition: background .1s;
+    cursor: pointer;
+  }
+  .dd-item:hover { background: var(--border); }
+</style>
+
+<!-- ── IMPORT RESUME MODAL ───────────────────────────────────────────────── -->
+<div id="import-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+  style="background:rgba(0,0,0,.6);backdrop-filter:blur(4px)">
+  <div class="w-full max-w-md rounded-2xl overflow-hidden" style="background:var(--surface);border:1px solid var(--border-h)">
+    <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--border)">
+      <div class="flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(167,139,250,.15);color:#a78bfa">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"/></svg>
+        </span>
+        <span class="font-bold text-sm" style="color:var(--text)">Create Resume</span>
+      </div>
+      <button class="action-btn" onclick="closeImportModal()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Paste resume text -->
+    <div id="import-pick" class="p-5">
+      <!-- AI backend status / token prompt -->
+      <div id="llm-badge" class="hidden mb-3 text-xs flex items-center gap-1.5" style="color:var(--faint)">
+        <span class="w-1.5 h-1.5 rounded-full inline-block" style="background:#3fb950"></span>
+        <span id="llm-badge-text"></span>
+      </div>
+      <div id="llm-token-box" class="hidden mb-3 p-3 rounded-lg"
+        style="background:rgba(227,179,65,.1);border:1px solid rgba(227,179,65,.3)">
+        <div class="text-xs mb-2" style="color:#e3b341">
+          Ollama isn't running — paste a free AI API key to continue
+          (<a id="llm-keys-link" href="#" target="_blank" rel="noopener" style="text-decoration:underline">get one free</a>).
+        </div>
+        <div class="flex gap-2">
+          <select id="llm-provider" class="input-field text-xs" style="max-width:140px" onchange="updateLlmKeysLink()"></select>
+          <input id="llm-key" type="password" placeholder="Paste API key" class="input-field flex-1 text-xs" />
+          <button class="btn-primary text-xs" onclick="saveLlmToken()">Save</button>
+        </div>
+      </div>
+      <p class="text-sm mb-3" style="color:var(--muted)">
+        Paste your résumé below — plain text or LaTeX. The AI extracts the content and rebuilds it
+        in the Apsis template, then compiles a clean PDF.
+      </p>
+      <textarea id="import-text" rows="9"
+        placeholder="Paste your resume here — name, contact, education, work experience, projects, skills, coding profiles, achievements…"
+        class="input-field w-full text-xs" style="resize:vertical;min-height:190px;line-height:1.5"></textarea>
+      <div id="import-err" class="hidden mt-3 px-3 py-2 rounded-lg text-xs"
+        style="background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.35);color:#ff8b84"></div>
+
+      <!-- Specialised variants to also generate (inherit base, boost role keywords) -->
+      <div class="mt-4">
+        <div class="text-xs font-semibold uppercase tracking-widest mb-2" style="color:var(--faint)">Also make specialised versions for <span style="text-transform:none;font-weight:400">(optional, ATS-tuned per role)</span></div>
+        <div id="import-roles" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button class="btn-ghost" onclick="closeImportModal()">Cancel</button>
+        <button class="btn-primary" onclick="runImport()">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Generate Resume
+        </button>
+      </div>
+    </div>
+
+    <!-- Working -->
+    <div id="import-busy" class="hidden p-8 flex flex-col items-center gap-3">
+      <span class="w-8 h-8 rounded-full inline-block" style="border:3px solid var(--border);border-top-color:var(--accent);animation:spin 0.8s linear infinite"></span>
+      <span class="text-sm" style="color:var(--muted)">Extracting with Qwen &amp; compiling PDF…</span>
+      <span class="text-xs" style="color:var(--faint)">This can take a minute on first run.</span>
+    </div>
+
+    <!-- Done -->
+    <div id="import-done" class="hidden p-5">
+      <div class="flex items-center gap-2.5 mb-4">
+        <svg class="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        <span class="text-sm font-semibold" style="color:var(--text)">Rebuilt <span id="import-name" style="color:var(--accent)"></span></span>
+      </div>
+      <div class="flex gap-2">
+        <a id="import-pdf" href="#" target="_blank" class="btn-primary flex-1 justify-center">Download PDF</a>
+        <a id="import-tex" href="#" target="_blank" class="btn-ghost flex-1 justify-center">Download .tex</a>
+      </div>
+      <div id="import-variants" class="mt-1"></div>
+      <button class="btn-ghost w-full mt-2 justify-center" onclick="openImportModal()">Create another</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST CONTAINER ───────────────────────────────────────────────────── -->
+<div id="toasts" class="fixed bottom-5 right-5 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+
+
+<script>
+'use strict';
+
+// ── Auth (JWT) ────────────────────────────────────────────────────────────────
+const TOKEN_KEY = 'apsis_token';
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function logout() { localStorage.removeItem(TOKEN_KEY); location.replace('/login'); }
+
+// No token → bounce to the login page before anything renders.
+if (!getToken()) location.replace('/login');
+
+// Inject the bearer token on every fetch, and bounce to /login on 401.
+const _origFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+  const headers = new Headers(init.headers || {});
+  const t = getToken();
+  if (t && !headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + t);
+  return _origFetch(input, { ...init, headers }).then((r) => {
+    if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); location.replace('/login'); }
+    return r;
+  });
+};
+
+// ── Import LaTeX resume ───────────────────────────────────────────────────────
+const importRoles = new Set();
+
+function openImportModal() {
+  document.getElementById('import-modal').classList.remove('hidden');
+  document.getElementById('import-pick').classList.remove('hidden');
+  document.getElementById('import-busy').classList.add('hidden');
+  document.getElementById('import-done').classList.add('hidden');
+  document.getElementById('import-err').classList.add('hidden');
+  const ta = document.getElementById('import-text');
+  if (ta) ta.value = '';
+  loadImportRoles();
+  checkLlmStatus();
+}
+function closeImportModal() { document.getElementById('import-modal').classList.add('hidden'); }
+
+// ── AI backend status + free-token prompt ─────────────────────────────────────
+let llmProviders = {};
+async function checkLlmStatus() {
+  const badge = document.getElementById('llm-badge');
+  const box = document.getElementById('llm-token-box');
+  try {
+    const s = await API.get('/api/llm/status');
+    llmProviders = s.providers || {};
+    if (s.available) {
+      document.getElementById('llm-badge-text').textContent =
+        `AI ready · ${s.provider}${s.model ? ' · ' + s.model : ''}`;
+      badge.classList.remove('hidden');
+      box.classList.add('hidden');
+    } else {
+      badge.classList.add('hidden');
+      document.getElementById('llm-provider').innerHTML = Object.entries(llmProviders)
+        .map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+      updateLlmKeysLink();
+      box.classList.remove('hidden');
+    }
+  } catch (e) { /* ignore */ }
+}
+function updateLlmKeysLink() {
+  const k = document.getElementById('llm-provider').value;
+  const link = document.getElementById('llm-keys-link');
+  if (llmProviders[k]) link.href = llmProviders[k].keysUrl;
+}
+async function saveLlmToken() {
+  const provider = document.getElementById('llm-provider').value;
+  const api_key = document.getElementById('llm-key').value.trim();
+  if (!api_key) { UI.toast('Paste an API key first', 'error'); return; }
+  try {
+    await API.post('/api/llm/token', { provider, api_key });
+    UI.toast('AI token saved', 'success');
+    document.getElementById('llm-key').value = '';
+    checkLlmStatus();
+  } catch (e) { UI.toast(e.message, 'error'); }
+}
+
+// Populate the "specialise for" chips from the job-type taxonomy.
+async function loadImportRoles() {
+  importRoles.clear();
+  const box = document.getElementById('import-roles');
+  try {
+    const { types } = await API.get('/api/job-types');
+    box.innerHTML = types
+      .map((t) => `<button type="button" class="disc-chip" onclick="toggleImportRole('${t.id}', this)">${esc(t.label)}</button>`)
+      .join('');
+  } catch (e) { box.innerHTML = ''; }
+}
+function toggleImportRole(id, btn) {
+  if (importRoles.has(id)) { importRoles.delete(id); btn.classList.remove('active'); }
+  else { importRoles.add(id); btn.classList.add('active'); }
+}
+
+async function runImport() {
+  const ta = document.getElementById('import-text');
+  const text = (ta.value || '').trim();
+  const errBox = document.getElementById('import-err');
+  if (!text) {
+    errBox.textContent = 'Paste your resume text first.';
+    errBox.classList.remove('hidden');
+    return;
+  }
+  document.getElementById('import-pick').classList.add('hidden');
+  errBox.classList.add('hidden');
+  document.getElementById('import-busy').classList.remove('hidden');
+  try {
+    const res = await fetch('/api/resume/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, roles: [...importRoles] }),
+    });
+    if (!res.ok) {
+      const { detail } = await res.json().catch(() => ({ detail: 'Import failed' }));
+      throw new Error(detail || 'Import failed');
+    }
+    const data = await res.json();
+    const t = encodeURIComponent(getToken());
+    document.getElementById('import-name').textContent = data.name || 'Resume';
+    document.getElementById('import-pdf').href = data.base.pdf_url + '?token=' + t;
+    document.getElementById('import-tex').href = data.base.tex_url + '?token=' + t;
+    const vbox = document.getElementById('import-variants');
+    vbox.innerHTML = (data.variants && data.variants.length)
+      ? '<div class="text-xs font-semibold uppercase tracking-widest mt-4 mb-2" style="color:var(--faint)">Specialised versions</div>'
+        + data.variants.map((v) =>
+            `<div class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 mb-1.5" style="background:var(--elevated);border:1px solid var(--border)">`
+            + `<span class="text-xs truncate" style="color:var(--text)">${esc(v.label)}${v.tailored ? '' : ' <span style=\'color:var(--faint)\'>· same as base</span>'}</span>`
+            + `<span class="flex gap-3 flex-shrink-0">`
+            + `<a href="${v.pdf_url}?token=${t}" target="_blank" class="text-xs font-medium" style="color:var(--accent)">PDF</a>`
+            + `<a href="${v.tex_url}?token=${t}" target="_blank" class="text-xs" style="color:var(--muted)">.tex</a>`
+            + `</span></div>`
+          ).join('')
+      : '';
+    document.getElementById('import-busy').classList.add('hidden');
+    document.getElementById('import-done').classList.remove('hidden');
+  } catch (err) {
+    document.getElementById('import-busy').classList.add('hidden');
+    document.getElementById('import-pick').classList.remove('hidden');
+    const box = document.getElementById('import-err');
+    box.textContent = err.message;
+    box.classList.remove('hidden');
+  }
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const STATUS = {
+  not_applied: { label: 'Not Applied', bg: 'rgba(139,148,158,.15)', fg: '#9ca3af', dot: '#6b7280' },
+  applied:     { label: 'Applied',     bg: 'rgba(56,139,253,.15)',  fg: '#388bfd', dot: '#388bfd' },
+  interview:   { label: 'Interview',   bg: 'rgba(227,179,65,.15)',  fg: '#e3b341', dot: '#e3b341' },
+  offer:       { label: 'Offer',       bg: 'rgba(63,185,80,.15)',   fg: '#3fb950', dot: '#3fb950' },
+  rejected:    { label: 'Rejected',    bg: 'rgba(248,81,73,.15)',   fg: '#f85149', dot: '#f85149' },
+};
+
+const SOURCE = {
+  'Indeed India': { bg: 'rgba(255,107,44,.15)', fg: '#fb923c' },
+  'Indeed':       { bg: 'rgba(255,107,44,.15)', fg: '#fb923c' },
+  'RemoteOK':     { bg: 'rgba(124,58,237,.18)', fg: '#a78bfa' },
+  'Naukri':       { bg: 'rgba(63,185,80,.15)',  fg: '#3fb950' },
+};
+
+const AVATAR_PALETTES = [
+  ['#388bfd','#1e3a8a'], ['#8b5cf6','#3b0764'], ['#3fb950','#064e3b'],
+  ['#e3b341','#78350f'], ['#f85149','#7f1d1d'], ['#0ea5e9','#0c4a6e'],
+  ['#ec4899','#831843'],
+];
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function safeUrl(u) {
+  try {
+    const p = new URL(u);
+    return (p.protocol === 'http:' || p.protocol === 'https:') ? u : '#';
+  } catch { return '#'; }
+}
+
+function avatarGradient(name) {
+  let h = 0;
+  for (const c of String(name)) h = ((h << 5) - h) + c.charCodeAt(0);
+  return AVATAR_PALETTES[Math.abs(h) % AVATAR_PALETTES.length];
+}
+
+function timeAgo(iso) {
+  const d = Date.now() - new Date(iso);
+  const m = Math.floor(d / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const dy = Math.floor(h / 24);
+  if (dy < 30) return `${dy}d ago`;
+  return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+}
+
+function logLineClass(line) {
+  const l = line.toLowerCase();
+  if (l.startsWith('starting') || l.includes('[web]') || l.startsWith('done')) return 'web';
+  if (l.includes('error') || l.includes('failed')) return 'err';
+  if (l.includes('processed') || l.includes('done') || l.includes('generated') || l.includes('saved')) return 'ok';
+  if (l.startsWith('  ') || l.startsWith('\t')) return 'dim';
+  return '';
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const API = {
+  async get(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({detail: r.statusText}))).detail);
+    return r.json();
+  },
+  async patch(path, body) {
+    const r = await fetch(path, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({detail: r.statusText}))).detail);
+    return r.json();
+  },
+  async del(path) {
+    const r = await fetch(path, { method:'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({detail: r.statusText}))).detail);
+    return r.json();
+  },
+  async post(path, body) {
+    const opts = { method:'POST' };
+    if (body !== undefined) {
+      opts.headers = { 'Content-Type':'application/json' };
+      opts.body = JSON.stringify(body);
+    }
+    const r = await fetch(path, opts);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({detail: r.statusText}))).detail);
+    return r.json();
+  },
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  filterStatus: '',
+  filterSource: '',
+  search: '',
+  sort: 'newest',
+  activeJobId: null,
+  crawlRunning: false,
+  _pollTimer: null,
+  _searchTimer: null,
+};
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function badgeHtml(status, jobId) {
+  const m = STATUS[status] || STATUS.applied;
+  return `<button class="status-badge"
+    style="background:${m.bg};color:${m.fg}"
+    onclick="App.openStatusDrop(event,'${esc(jobId)}')">
+    <span style="width:6px;height:6px;border-radius:50%;background:${m.dot};flex-shrink:0"></span>
+    ${m.label}
+    <svg style="width:10px;height:10px;opacity:.6" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+    </svg>
+  </button>`;
+}
+
+function sourceBadgeHtml(src) {
+  const m = SOURCE[src] || { bg:'rgba(125,133,144,.15)', fg:'#8b949e' };
+  return `<span class="source-badge" style="background:${m.bg};color:${m.fg}">${esc(src || '—')}</span>`;
+}
+
+function cardHtml(app, idx) {
+  const [c1, c2] = avatarGradient(app.company);
+  const initial = (app.company || '?')[0].toUpperCase();
+  const kw = app.keywords_matched || [];
+  const hasDetail = (app.description && app.description.trim()) || kw.length;
+  const stMeta = STATUS[app.status] || STATUS.applied;
+
+  return `
+<div class="job-card card-anim rounded-2xl flex flex-col overflow-hidden"
+  data-id="${esc(app.id)}"
+  style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ${stMeta.dot};min-height:212px;animation-delay:${idx * 30}ms">
+
+  <!-- Clickable tile body -->
+  <div class="flex flex-col flex-1 p-4 ${hasDetail ? 'cursor-pointer' : ''}"
+    ${hasDetail ? `onclick="App.toggleExpand(event,'${esc(app.id)}')"` : ''}>
+
+    <!-- top: avatar + status -->
+    <div class="flex items-start justify-between gap-2 mb-3">
+      <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm text-white shadow-md"
+        style="background:linear-gradient(135deg,${c1},${c2})">${initial}</div>
+      ${badgeHtml(app.status, app.id)}
+    </div>
+
+    <!-- title -->
+    <h3 class="font-semibold text-[15px] leading-snug line-clamp-2 mb-1" style="color:var(--text)" title="${esc(app.title)}">${esc(app.title)}</h3>
+
+    <!-- company / location -->
+    <p class="text-xs truncate" style="color:var(--muted)">
+      ${esc(app.company || 'Unknown company')}${app.location ? ` · ${esc(app.location)}` : ''}
+    </p>
+
+    <!-- salary / stipend (beneath the place) -->
+    ${(() => {
+      const sal = (app.salary || '').trim();
+      const has = !!sal;
+      return `<p class="flex items-center gap-1 text-xs mt-1 font-semibold" style="color:${has ? '#5fd17a' : 'var(--faint)'}">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        ${has ? esc(sal) : 'NA'}
+      </p>`;
+    })()}
+
+    <!-- source + time -->
+    <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+      ${app.source ? sourceBadgeHtml(app.source) : ''}
+      <span class="text-xs" style="color:var(--faint)" title="${esc(app.applied_at)}">${timeAgo(app.applied_at)}</span>
+    </div>
+
+    ${app.notes ? `<p class="mt-2 text-xs px-3 py-2 rounded-lg italic line-clamp-2" style="color:var(--muted);background:var(--elevated)">${esc(app.notes)}</p>` : ''}
+
+    <!-- spacer pushes footer to the bottom for a uniform square tile -->
+    <div class="flex-1 min-h-[12px]"></div>
+
+    <!-- footer: actions + expand hint -->
+    <div class="flex items-center justify-between pt-3" style="border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-0.5">
+        ${app.resume_path ? `
+        <a href="/api/resume/${esc(app.id)}?token=${encodeURIComponent(getToken())}" target="_blank" title="Download PDF Resume" class="action-btn">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </a>` : ''}
+        ${app.apply_url ? `
+        <a href="${safeUrl(app.apply_url)}" target="_blank" rel="noopener noreferrer" title="View Job Listing" class="action-btn">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+        </a>` : ''}
+        <button onclick="App.deleteApp('${esc(app.id)}')" title="Delete" class="action-btn danger">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+      </div>
+      ${hasDetail ? `<button class="action-btn" onclick="App.toggleExpand(event,'${esc(app.id)}')" title="Details">
+        <svg class="chevron w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>` : ''}
+    </div>
+  </div>
+
+  <!-- Expandable detail -->
+  ${hasDetail ? `
+  <div class="job-expand" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+    <div class="px-4 pb-4 pt-1" style="border-top:1px solid var(--border)">
+      ${kw.length ? `
+      <div class="mt-3 mb-3">
+        <p class="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style="color:var(--faint)">Matched Keywords</p>
+        <div class="flex flex-wrap gap-1.5">
+          ${kw.map((k, i) => `<span class="kw-chip text-xs px-2 py-0.5 rounded-md font-medium"
+            style="background:rgba(124,58,237,.15);color:#a78bfa;animation-delay:${i * 35}ms">${esc(k)}</span>`).join('')}
+        </div>
+      </div>` : ''}
+      ${app.description && app.description.trim() ? `
+      <div class="mt-3">
+        <p class="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style="color:var(--faint)">Job Description</p>
+        <div class="text-xs leading-relaxed max-h-52 overflow-y-auto pr-2 whitespace-pre-line"
+          style="color:var(--muted)">${esc(app.description)}</div>
+      </div>` : ''}
+      ${app.apply_url ? `
+      <a href="${safeUrl(app.apply_url)}" target="_blank" rel="noopener noreferrer"
+        class="btn-primary mt-4 w-full justify-center">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+        Open Job Listing
+      </a>` : ''}
+    </div>
+  </div>` : ''}
+</div>`;
+}
+
+function emptyHtml() {
+  const hasFilter = state.filterStatus || state.search;
+  return `
+<div style="padding:5rem 0;display:flex;flex-direction:column;align-items:center;gap:1rem;color:var(--muted)">
+  <div style="width:56px;height:56px;border-radius:1rem;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center">
+    <svg style="width:28px;height:28px;opacity:.4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+    </svg>
+  </div>
+  <div style="text-align:center">
+    <p style="font-weight:600;color:var(--text);font-size:.875rem">${hasFilter ? 'No results found' : 'No applications yet'}</p>
+    <p style="font-size:.75rem;margin-top:.25rem">${hasFilter ? 'Try clearing the filter or search.' : 'Run a crawl to start finding jobs.'}</p>
+  </div>
+  ${!hasFilter ? `<button class="btn-primary mt-2" onclick="UI.openCrawlModal()">
+    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    New Crawl
+  </button>` : ''}
+</div>`;
+}
+
+function skeletonHtml() {
+  return Array(3).fill(0).map(() => `
+<div class="rounded-xl p-4" style="background:var(--surface);border:1px solid var(--border)">
+  <div class="flex gap-3">
+    <div class="skeleton w-10 h-10 rounded-xl flex-shrink-0"></div>
+    <div class="flex-1 space-y-2 pt-1">
+      <div class="skeleton h-4 w-2/3 rounded"></div>
+      <div class="skeleton h-3 w-1/2 rounded"></div>
+      <div class="skeleton h-3 w-1/4 rounded mt-3"></div>
+    </div>
+  </div>
+</div>`).join('');
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+function animateCount(el, to) {
+  const from = parseInt(el.textContent) || 0;
+  if (from === to) return;
+  el.classList.remove('num-bump'); void el.offsetWidth; el.classList.add('num-bump');
+  const steps = Math.min(Math.abs(to - from), 20);
+  const dur = 400, start = performance.now();
+  function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = to;
+  }
+  requestAnimationFrame(tick);
+}
+
+async function loadStats() {
+  try {
+    const s = await API.get('/api/stats');
+    animateCount(document.getElementById('s-total'),       s.total);
+    animateCount(document.getElementById('s-applied'),     s.applied);
+    animateCount(document.getElementById('s-not_applied'), s.not_applied || 0);
+    animateCount(document.getElementById('s-interview'),   s.interview);
+    animateCount(document.getElementById('s-offer'),       s.offer);
+    animateCount(document.getElementById('s-rejected'),    s.rejected);
+  } catch { /* ignore stats errors */ }
+}
+
+async function loadJobs() {
+  const list = document.getElementById('job-list');
+  const p = new URLSearchParams({ sort: state.sort });
+  if (state.filterStatus) p.set('status', state.filterStatus);
+  if (state.filterSource) p.set('source', state.filterSource);
+  if (state.search)       p.set('search', state.search);
+  try {
+    const apps = await API.get('/api/applications?' + p);
+    list.innerHTML = apps.length ? apps.map((a, i) => cardHtml(a, i)).join('') : emptyHtml();
+  } catch (e) {
+    list.innerHTML = `<p style="text-align:center;color:var(--faint);padding:2rem;font-size:.875rem">Failed to load: ${esc(e.message)}</p>`;
+  }
+}
+
+async function refresh() {
+  await Promise.all([loadStats(), loadJobs()]);
+}
+
+// ── App actions ───────────────────────────────────────────────────────────────
+const App = {
+  // Expand / collapse a job card
+  toggleExpand(e, jobId) {
+    // Ignore clicks on links, the status badge, or the action buttons —
+    // but allow the chevron button (which calls this directly).
+    if (e.target.closest('a, .status-badge, .action-btn.danger')) return;
+    const card = document.querySelector(`.job-card[data-id="${CSS.escape(jobId)}"]`);
+    if (!card) return;
+    const panel = card.querySelector('.job-expand');
+    const chevron = card.querySelector('.chevron');
+    if (!panel) return;
+    const isOpen = panel.style.maxHeight && panel.style.maxHeight !== '0px';
+    if (isOpen) {
+      panel.style.maxHeight = '0';
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    } else {
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+  },
+
+  // Status dropdown
+  openStatusDrop(e, jobId) {
+    e.stopPropagation();
+    state.activeJobId = jobId;
+    const dd = document.getElementById('status-dd');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top  = `${rect.bottom + window.scrollY + 4}px`;
+    dd.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 148)}px`;
+    dd.classList.remove('hidden');
+    // re-trigger animation
+    dd.classList.remove('drop-anim');
+    void dd.offsetWidth;
+    dd.classList.add('drop-anim');
+  },
+
+  async setStatus(status) {
+    const dd = document.getElementById('status-dd');
+    dd.classList.add('hidden');
+    if (!state.activeJobId) return;
+    try {
+      await API.patch(`/api/applications/${state.activeJobId}/status`, { status });
+      UI.toast(`Status → ${STATUS[status].label}`, 'success');
+      await refresh();
+    } catch (e) { UI.toast(e.message, 'error'); }
+  },
+
+  async deleteApp(id) {
+    if (!confirm('Delete this application? This cannot be undone.')) return;
+    try {
+      await API.del(`/api/applications/${id}`);
+      UI.toast('Deleted', 'info');
+      await refresh();
+    } catch (e) { UI.toast(e.message, 'error'); }
+  },
+
+  async startCrawl() {
+    const btn = document.getElementById('btn-start-crawl');
+    const roles = [...document.querySelectorAll('.crawl-role-cb:checked')].map(c => c.value);
+    btn.disabled = true;
+    try {
+      await API.post('/api/crawl', { roles });
+    } catch (e) {
+      UI.toast(e.message, 'error');
+      btn.disabled = false;
+      return;
+    }
+    UI.toast(roles.length ? `Crawling ${roles.length} role(s)…` : 'Crawl started', 'success');
+    UI.showLog();
+    App._pollCrawl();
+  },
+
+  _pollCrawl() {
+    const logEl  = document.getElementById('log-output');
+    const dotEl  = document.getElementById('log-dot');
+    const lblEl  = document.getElementById('log-label');
+    const closeBtn = document.getElementById('btn-log-close');
+    const indicator = document.getElementById('crawl-indicator');
+
+    state.crawlRunning = true;
+    indicator.classList.remove('hidden');
+    indicator.classList.add('flex');
+
+    async function tick() {
+      try {
+        const s = await API.get('/api/crawl/status');
+        logEl.innerHTML = s.log.map(line =>
+          `<div class="log-line ${logLineClass(line)}">${esc(line)}</div>`
+        ).join('');
+        logEl.scrollTop = logEl.scrollHeight;
+
+        if (s.running) {
+          state._pollTimer = setTimeout(tick, 1500);
+        } else {
+          state.crawlRunning = false;
+          dotEl.style.background   = '#3fb950';
+          dotEl.style.animation    = 'none';
+          lblEl.textContent        = 'Complete';
+          closeBtn.classList.remove('hidden');
+          indicator.classList.add('hidden');
+          indicator.classList.remove('flex');
+          await refresh();
+          UI.toast('Crawl complete — applications updated!', 'success');
+        }
+      } catch { state._pollTimer = setTimeout(tick, 3000); }
+    }
+    tick();
+  },
+};
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+const UI = {
+  async openCrawlModal() {
+    const modal = document.getElementById('crawl-modal');
+    modal.classList.remove('hidden');
+    if (state.crawlRunning) {
+      document.getElementById('crawl-pre').classList.add('hidden');
+      document.getElementById('crawl-log').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('crawl-pre').classList.remove('hidden');
+    document.getElementById('crawl-log').classList.add('hidden');
+    const startBtn = document.getElementById('btn-start-crawl');
+    startBtn.disabled = false;
+
+    // Populate the role multi-select (falls back to profile roles if none).
+    try {
+      const roles = await API.get('/api/roles');
+      document.getElementById('crawl-roles').innerHTML = roles.length
+        ? roles.map(r =>
+            `<label class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer" style="background:var(--elevated);border:1px solid var(--border)">`
+            + `<input type="checkbox" class="crawl-role-cb" value="${esc(r.role)}" checked />`
+            + `<span class="text-xs truncate" style="color:var(--text)" title="${esc(r.role)}">${esc(r.role)}</span></label>`
+          ).join('')
+        : `<span class="text-xs" style="color:var(--faint)">No roles configured — the crawl will use your profile roles.</span>`;
+    } catch (e) { /* non-fatal — crawl will use profile roles */ }
+
+    // Enforce the 24h gate: non-admins can't start a crawl that ran recently.
+    try {
+      const sc = await API.get('/api/crawl/schedule');
+      const gate = document.getElementById('crawl-gate');
+      if (!sc.may_crawl) {
+        document.getElementById('crawl-gate-msg').textContent =
+          `A crawl ran in the last ${sc.interval_hours}h. Only an admin can start another before then.`;
+        gate.classList.remove('hidden');
+        startBtn.disabled = true;
+      } else {
+        gate.classList.add('hidden');
+        startBtn.disabled = false;
+      }
+    } catch (e) { /* non-fatal */ }
+  },
+
+  toggleAllRoles() {
+    const cbs = [...document.querySelectorAll('.crawl-role-cb')];
+    const allOn = cbs.length > 0 && cbs.every(c => c.checked);
+    cbs.forEach(c => { c.checked = !allOn; });
+  },
+
+  closeCrawlModal() {
+    document.getElementById('crawl-modal').classList.add('hidden');
+  },
+
+  backdropClose(e) {
+    if (e.target === e.currentTarget) UI.closeCrawlModal();
+  },
+
+  showLog() {
+    document.getElementById('crawl-pre').classList.add('hidden');
+    document.getElementById('crawl-log').classList.remove('hidden');
+    document.getElementById('log-output').innerHTML = '';
+    document.getElementById('log-dot').style.background = '#e3b341';
+    document.getElementById('log-dot').style.animation  = 'spinPulse 1.2s ease infinite';
+    document.getElementById('log-label').textContent    = 'Running…';
+    document.getElementById('btn-log-close').classList.add('hidden');
+  },
+
+  toast(msg, type = 'info') {
+    const styles = {
+      success: { bg:'rgba(63,185,80,.12)',  border:'rgba(63,185,80,.3)',  text:'#3fb950' },
+      error:   { bg:'rgba(248,81,73,.12)',  border:'rgba(248,81,73,.3)',  text:'#f85149' },
+      info:    { bg:'var(--elevated)',      border:'var(--border)',        text:'var(--text)' },
+    };
+    const icons = {
+      success: '<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>',
+      error:   '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>',
+      info:    '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>',
+    };
+    const s = styles[type] || styles.info;
+    const el = document.createElement('div');
+    el.className = 'toast-anim pointer-events-auto';
+    el.style.cssText = `
+      display:flex;align-items:center;gap:.625rem;
+      padding:.625rem .875rem;border-radius:.75rem;
+      border:1px solid ${s.border};background:${s.bg};
+      font-size:.8rem;font-weight:500;color:${s.text};
+      max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    `;
+    el.innerHTML = `
+      <svg style="width:14px;height:14px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">${icons[type]}</svg>
+      <span style="color:var(--text)">${esc(msg)}</span>`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  },
+};
+
+// ── Discover: browse all sources by job type ───────────────────────────────────
+const Discover = {
+  selected: new Set(),
+  types: [],
+  _searchTimer: null,
+
+  open() {
+    document.getElementById('discover-modal').classList.remove('hidden');
+    this.loadTypes();
+    this.loadJobs();
+  },
+  close() { document.getElementById('discover-modal').classList.add('hidden'); },
+  backdrop(e) { if (e.target === e.currentTarget) this.close(); },
+
+  async loadTypes() {
+    try {
+      const { types, total } = await API.get('/api/job-types');
+      this.types = types;
+      this.renderChips();
+      const status = document.getElementById('disc-status');
+      if (!this.selected.size) status.textContent = `${total} jobs cached across all sources`;
+    } catch (e) { UI.toast(e.message, 'error'); }
+  },
+
+  renderChips() {
+    document.getElementById('disc-types').innerHTML = this.types
+      .map((t) =>
+        `<button class="disc-chip${this.selected.has(t.id) ? ' active' : ''}" onclick="Discover.toggle('${t.id}')">`
+        + `${esc(t.label)}<span class="c">${t.count}</span></button>`
+      )
+      .join('');
+  },
+
+  toggle(id) {
+    if (this.selected.has(id)) this.selected.delete(id);
+    else this.selected.add(id);
+    this.renderChips();
+    this.loadJobs();
+  },
+
+  async loadJobs() {
+    const results = document.getElementById('disc-results');
+    const qs = new URLSearchParams();
+    const types = [...this.selected].join(',');
+    const search = document.getElementById('disc-search').value.trim();
+    if (types) qs.set('types', types);
+    if (search) qs.set('search', search);
+    qs.set('limit', '300');
+    results.innerHTML = `<div class="text-sm" style="color:var(--faint)">Loading…</div>`;
+    try {
+      this.render(await API.get('/api/jobs?' + qs.toString()));
+    } catch (e) {
+      results.innerHTML = `<div class="text-sm" style="color:#ff8b84">${esc(e.message)}</div>`;
+    }
+  },
+
+  render(data) {
+    const results = document.getElementById('disc-results');
+    if (!data.total) {
+      results.innerHTML = `<div class="text-sm text-center py-10" style="color:var(--faint)">`
+        + `No jobs match. Try <b style="color:var(--text)">Refresh from all sources</b> or widen your selection.</div>`;
+      return;
+    }
+    const labels = data.labels || {};
+    let groupIds = [...this.selected];
+    if (!groupIds.length) groupIds = Object.keys(data.groups);
+    groupIds = groupIds.filter((id) => (data.groups[id] || []).length);
+
+    results.innerHTML = groupIds
+      .map((id) => {
+        const jobs = data.groups[id] || [];
+        return `<div class="mb-5">`
+          + `<div class="text-xs font-bold uppercase tracking-widest mb-2" style="color:var(--accent)">`
+          + `${esc(labels[id] || id)} <span style="color:var(--faint)">· ${jobs.length}</span></div>`
+          + `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${jobs.map((j) => this.jobRow(j)).join('')}</div>`
+          + `</div>`;
+      })
+      .join('');
+  },
+
+  jobRow(j) {
+    const cats = (j.categories || []).map((c) => `<span class="disc-tag">${esc(c)}</span>`).join('');
+    const meta = [j.company, j.location].filter(Boolean).join(' · ');
+    return `<div class="rounded-xl p-3 flex items-start justify-between gap-2" style="background:var(--surface);border:1px solid var(--border)">`
+      + `<div class="min-w-0">`
+      + `<div class="text-sm font-semibold truncate" style="color:var(--text)" title="${esc(j.title)}">${esc(j.title)}</div>`
+      + `<div class="text-xs mt-0.5 truncate" style="color:var(--muted)">${esc(meta)}</div>`
+      + `<div class="mt-1.5 flex gap-1 flex-wrap"><span class="disc-src">${esc(j.source)}</span>${cats}</div>`
+      + `</div>`
+      + `<a href="${safeUrl(j.apply_url)}" target="_blank" rel="noopener" class="btn-ghost py-1 px-2.5 text-xs flex-shrink-0">Apply</a>`
+      + `</div>`;
+  },
+
+  async refresh() {
+    const btn = document.getElementById('disc-refresh');
+    const status = document.getElementById('disc-status');
+    try {
+      await API.post('/api/jobs/refresh');
+    } catch (e) {
+      if (!/in progress/i.test(e.message)) { UI.toast(e.message, 'error'); return; }
+    }
+    btn.disabled = true;
+    btn.style.opacity = '.6';
+    const poll = async () => {
+      try {
+        const st = await API.get('/api/jobs/refresh/status');
+        status.textContent = st.running && st.log.length ? st.log[st.log.length - 1] : '';
+        if (st.running) { setTimeout(poll, 1500); return; }
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        UI.toast(`Discovery done — ${st.summary ? st.summary.total : 0} jobs`, 'success');
+        this.loadTypes();
+        this.loadJobs();
+      } catch (e) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        UI.toast(e.message, 'error');
+      }
+    };
+    setTimeout(poll, 1200);
+  },
+};
+
+// ── Event wiring ──────────────────────────────────────────────────────────────
+document.getElementById('disc-search').addEventListener('input', () => {
+  clearTimeout(Discover._searchTimer);
+  Discover._searchTimer = setTimeout(() => Discover.loadJobs(), 280);
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(state._searchTimer);
+  state._searchTimer = setTimeout(() => {
+    state.search = e.target.value.trim();
+    loadJobs();
+  }, 280);
+});
+
+document.getElementById('sort-select').addEventListener('change', e => {
+  state.sort = e.target.value;
+  loadJobs();
+});
+
+document.getElementById('source-select').addEventListener('change', e => {
+  state.filterSource = e.target.value;
+  loadJobs();
+});
+
+// Unified status filter — keeps tab pills and stat cards in sync.
+function setStatusFilter(status) {
+  state.filterStatus = status;
+  document.querySelectorAll('.tab-pill').forEach(b =>
+    b.classList.toggle('active', (b.dataset.status || '') === status));
+  document.querySelectorAll('.stat-card').forEach(c =>
+    c.classList.toggle('active', (c.dataset.status || '') === status));
+  loadJobs();
+}
+
+document.querySelectorAll('.tab-pill').forEach(btn => {
+  btn.addEventListener('click', () => setStatusFilter(btn.dataset.status || ''));
+});
+
+document.querySelectorAll('.stat-card').forEach(card => {
+  card.addEventListener('click', () => setStatusFilter(card.dataset.status || ''));
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#status-dd') && !e.target.closest('.status-badge')) {
+    document.getElementById('status-dd').classList.add('hidden');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('status-dd').classList.add('hidden');
+    Discover.close();
+    if (!state.crawlRunning) UI.closeCrawlModal();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  // Highlight the "Total" stat card to match the default "All" tab
+  document.querySelector('.stat-card[data-status=""]')?.classList.add('active');
+  document.getElementById('job-list').innerHTML = skeletonHtml();
+  await refresh();
+
+  // Resume polling if a crawl was already running when page loaded
+  const cs = await API.get('/api/crawl/status').catch(() => ({ running: false }));
+  if (cs.running) {
+    state.crawlRunning = true;
+    document.getElementById('crawl-indicator').classList.remove('hidden');
+    document.getElementById('crawl-indicator').classList.add('flex');
+    App._pollCrawl();
+  }
+})();
+</script>
+</body>
+</html>

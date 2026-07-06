@@ -1,0 +1,29 @@
+# Never copy host node_modules — better-sqlite3 is built for the host OS.
+node_modules
+
+# Python implementation is not part of the Node deploy.
+python
+
+# Docs / local-only
+docs
+.git
+.gitignore
+*.log
+npm-debug.log
+
+# Secrets — set these as Railway env vars instead.
+.env
+
+# Runtime-writable data (lives on the mounted volume, not in the image).
+# Keep data/profile.json and data/companies.json — they're seed config.
+data/applications.db
+data/applications.db-shm
+data/applications.db-wal
+data/crawl_state.json
+data/llm.json
+data/applications.json
+data/applications.json.migrated
+
+# Generated resumes (regenerated at runtime on the volume).
+resumes/*.pdf
+resumes/imported

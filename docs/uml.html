@@ -1,0 +1,306 @@
+<title>Job Apply Agent — UML</title>
+<style>
+  :root {
+    --bg: #f6f8fc;
+    --panel: #ffffff;
+    --grid: #e5eaf3;
+    --ink: #1a2230;
+    --muted: #5f6b80;
+    --edge: #64748b;
+    --accent: #4f6bd8;
+    --iface: #2f9e8f;
+    --service: #4f6bd8;
+    --entity: #c2822a;
+    --store: #2b8fb0;
+    --ui: #7d5bd0;
+    --hair: #dfe5f0;
+    --shadow: 0 1px 2px rgba(20,30,55,.06), 0 6px 24px rgba(20,30,55,.06);
+    --mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e131b; --panel: #161d28; --grid: #1c2532; --ink: #e7edf7;
+      --muted: #93a0b6; --edge: #7f8ea8; --hair: #263140;
+      --iface: #43b7a6; --service: #7a92ef; --entity: #d9a441;
+      --store: #46a9c9; --ui: #9d7ce6;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e131b; --panel: #161d28; --grid: #1c2532; --ink: #e7edf7;
+    --muted: #93a0b6; --edge: #7f8ea8; --hair: #263140;
+    --iface: #43b7a6; --service: #7a92ef; --entity: #d9a441; --store: #46a9c9; --ui: #9d7ce6;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f8fc; --panel: #ffffff; --grid: #e5eaf3; --ink: #1a2230;
+    --muted: #5f6b80; --edge: #64748b; --hair: #dfe5f0;
+    --iface: #2f9e8f; --service: #4f6bd8; --entity: #c2822a; --store: #2b8fb0; --ui: #7d5bd0;
+    --shadow: 0 1px 2px rgba(20,30,55,.06), 0 6px 24px rgba(20,30,55,.06);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 64px; }
+
+  header { margin-bottom: 26px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 8px;
+  }
+  h1 {
+    font-size: clamp(24px, 3.4vw, 34px); margin: 0 0 8px; font-weight: 680;
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--muted); max-width: 68ch; font-size: 15.5px; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 22px 0 8px;
+    padding: 14px 16px; background: var(--panel); border: 1px solid var(--hair);
+    border-radius: 12px; box-shadow: var(--shadow); font-size: 12.5px;
+  }
+  .legend .grp { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .legend .sep { width: 1px; align-self: stretch; background: var(--hair); }
+  .chip { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.12); }
+  .relkey { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); white-space: nowrap; }
+  .relkey svg { display: block; }
+
+  .frame {
+    margin-top: 16px; padding: 18px; border: 1px solid var(--hair);
+    border-radius: 16px; box-shadow: var(--shadow); overflow-x: auto;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 26px 26px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 26px 26px,
+      var(--panel);
+  }
+  .frame svg { display: block; width: 100%; min-width: 940px; height: auto; }
+
+  /* UML svg element styles */
+  .box { fill: var(--panel); stroke: var(--hair); stroke-width: 1; rx: 8; }
+  .cname { font-family: var(--sans); font-weight: 680; font-size: 14px; fill: var(--ink); }
+  .stereo { font-family: var(--mono); font-size: 11px; fill: var(--muted); font-style: italic; }
+  .member { font-family: var(--mono); font-size: 11.5px; fill: var(--ink); }
+  .note { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+  .divider { stroke: var(--hair); stroke-width: 1; }
+  .accentbar { stroke-width: 4; }
+
+  .edge { stroke: var(--edge); stroke-width: 1.6; fill: none; }
+  .dash { stroke-dasharray: 5 4; }
+  .mfill { fill: var(--edge); }
+  .mopen { fill: var(--panel); stroke: var(--edge); stroke-width: 1.3; }
+  .mstroke { fill: none; stroke: var(--edge); stroke-width: 1.4; }
+  .elabel {
+    font-family: var(--mono); font-size: 10.5px; fill: var(--muted);
+    paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round;
+  }
+
+  .flow { margin-top: 30px; }
+  .flow h2 { font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-weight: 640; }
+  .steps { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .step {
+    flex: 1 1 150px; min-width: 140px; background: var(--panel); border: 1px solid var(--hair);
+    border-radius: 11px; padding: 12px 13px; box-shadow: var(--shadow); position: relative;
+  }
+  .step .n { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; }
+  .step .t { font-size: 13px; margin-top: 3px; }
+  .step .d { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .arrowdot { align-self: center; color: var(--edge); font-size: 18px; line-height: 1; }
+
+  footer { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--hair); color: var(--muted); font-size: 13px; }
+  footer code { font-family: var(--mono); font-size: 12px; background: var(--panel); border: 1px solid var(--hair); border-radius: 5px; padding: 1px 6px; }
+  .done { color: var(--iface); } .warn { color: var(--entity); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Proposed architecture · for review</p>
+    <h1>Job Apply Agent — multi-source fetch, classify &amp; job-type dropdown</h1>
+    <p class="lede">Class diagram in UML notation: <strong>+</strong> public / <strong>–</strong> private members, and typed relationship arrows. Every job source is a Strategy behind <span style="font-family:var(--mono)">JobSource</span>; a classifier tags each job so the dashboard dropdown can filter across all sources. <strong>All boxes are now implemented</strong> in the JS version — the ATS + RemoteOK sources are aggregated by a <span style="font-family:var(--mono)">DiscoveryService</span> (fetch → classify → cache), while <span style="font-family:var(--mono)">CrawlerService</span> drives the resume-tailoring agent.</p>
+  </header>
+
+  <div class="legend">
+    <div class="grp">
+      <span class="chip"><span class="swatch" style="background:var(--iface)"></span>interface</span>
+      <span class="chip"><span class="swatch" style="background:var(--service)"></span>service</span>
+      <span class="chip"><span class="swatch" style="background:var(--entity)"></span>entity</span>
+      <span class="chip"><span class="swatch" style="background:var(--store)"></span>persistence</span>
+      <span class="chip"><span class="swatch" style="background:var(--ui)"></span>UI</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="relkey"><svg width="46" height="12"><line x1="2" y1="6" x2="34" y2="6" stroke="var(--edge)" stroke-width="1.6" stroke-dasharray="5 4"/><path d="M34,1 L44,6 L34,11 Z" fill="var(--panel)" stroke="var(--edge)" stroke-width="1.3"/></svg>realizes</span>
+      <span class="relkey"><svg width="46" height="12"><path d="M2,6 L10,1 L18,6 L10,11 Z" fill="var(--panel)" stroke="var(--edge)" stroke-width="1.3"/><line x1="18" y1="6" x2="44" y2="6" stroke="var(--edge)" stroke-width="1.6"/></svg>aggregates</span>
+      <span class="relkey"><svg width="46" height="12"><line x1="2" y1="6" x2="36" y2="6" stroke="var(--edge)" stroke-width="1.6"/><path d="M36,2 L44,6 L36,10 Z" fill="var(--edge)"/></svg>uses / returns</span>
+      <span class="relkey"><svg width="46" height="12"><line x1="2" y1="6" x2="36" y2="6" stroke="var(--edge)" stroke-width="1.6" stroke-dasharray="5 4"/><path d="M36,2 L44,6 L36,10" fill="none" stroke="var(--edge)" stroke-width="1.4"/></svg>depends</span>
+    </div>
+  </div>
+
+  <div class="frame">
+    <svg viewBox="0 0 1180 910" role="img" aria-label="UML class diagram of the Job Apply Agent architecture">
+      <defs>
+        <marker id="mArrow" markerWidth="11" markerHeight="10" refX="8.5" refY="3" orient="auto"><path d="M0,0 L8.5,3 L0,6 Z" class="mfill"/></marker>
+        <marker id="mVee" markerWidth="11" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8.5,3 L0,6" class="mstroke"/></marker>
+        <marker id="mTri" markerWidth="15" markerHeight="14" refX="11" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" class="mopen"/></marker>
+        <marker id="mDiamond" markerWidth="17" markerHeight="12" refX="1.5" refY="4" orient="auto"><path d="M0,4 L6,0.5 L12,4 L6,7.5 Z" class="mopen"/></marker>
+      </defs>
+
+      <!-- ============ EDGES (drawn first, under boxes) ============ -->
+      <!-- realizations: sources ..|> JobSource -->
+      <g>
+        <line class="edge dash" x1="104" y1="180" x2="360" y2="120" marker-end="url(#mTri)"/>
+        <line class="edge dash" x1="298" y1="180" x2="405" y2="120" marker-end="url(#mTri)"/>
+        <line class="edge dash" x1="492" y1="180" x2="450" y2="120" marker-end="url(#mTri)"/>
+        <line class="edge dash" x1="686" y1="180" x2="495" y2="120" marker-end="url(#mTri)"/>
+        <line class="edge dash" x1="880" y1="180" x2="540" y2="120" marker-end="url(#mTri)"/>
+        <line class="edge dash" x1="1074" y1="180" x2="585" y2="120" marker-end="url(#mTri)"/>
+      </g>
+      <!-- aggregation: CrawlerService <>-> JobSource -->
+      <line class="edge" x1="700" y1="70" x2="600" y2="70" marker-start="url(#mDiamond)"/>
+      <text class="elabel" x="650" y="62" text-anchor="middle">strategies *</text>
+      <!-- crawler produces Job -->
+      <path class="edge" d="M780,120 C700,200 640,250 585,330" marker-end="url(#mArrow)"/>
+      <text class="elabel" x="672" y="240" text-anchor="middle">produces</text>
+      <!-- crawler ..> classifier -->
+      <line class="edge dash" x1="845" y1="120" x2="828" y2="340" marker-end="url(#mVee)"/>
+      <text class="elabel" x="852" y="235" text-anchor="middle">classify</text>
+      <!-- classifier ..> Job (sets categories) -->
+      <line class="edge dash" x1="690" y1="388" x2="612" y2="404" marker-end="url(#mVee)"/>
+      <text class="elabel" x="652" y="384" text-anchor="middle">tags types</text>
+      <!-- classifier ..> cache -->
+      <path class="edge dash" d="M812,428 C740,485 660,505 605,540" marker-end="url(#mVee)"/>
+      <text class="elabel" x="726" y="500" text-anchor="middle">remember()</text>
+      <!-- API -> persistence -->
+      <line class="edge" x1="215" y1="700" x2="215" y2="638" marker-end="url(#mArrow)"/>
+      <line class="edge" x1="600" y1="700" x2="600" y2="638" marker-end="url(#mArrow)"/>
+      <line class="edge" x1="955" y1="700" x2="955" y2="638" marker-end="url(#mArrow)"/>
+      <!-- API -> crawler (routed right margin), dashed dependency -->
+      <path class="edge dash" d="M1080,716 L1132,716 L1132,70 L992,70" marker-end="url(#mVee)"/>
+      <text class="elabel" x="1132" y="400" text-anchor="middle" transform="rotate(90 1132 400)">POST /api/crawl</text>
+      <!-- UI -> API -->
+      <line class="edge" x1="585" y1="820" x2="585" y2="778" marker-end="url(#mArrow)"/>
+      <text class="elabel" x="585" y="802" text-anchor="middle">fetch + JWT</text>
+
+      <!-- ============ NODES ============ -->
+      <!-- JobSource interface -->
+      <g transform="translate(330,20)">
+        <rect class="box" width="270" height="100" rx="8"/>
+        <rect x="0" y="0" width="4" height="100" fill="var(--iface)" rx="2"/>
+        <text class="stereo" x="135" y="22" text-anchor="middle">«interface»</text>
+        <text class="cname" x="135" y="40" text-anchor="middle">JobSource</text>
+        <line class="divider" x1="12" y1="50" x2="258" y2="50"/>
+        <text class="member" x="16" y="70">+ sourceName: string</text>
+        <text class="member" x="16" y="88">+ search(role, loc, pages): Job[]</text>
+      </g>
+
+      <!-- CrawlerService -->
+      <g transform="translate(700,20)">
+        <rect class="box" width="292" height="100" rx="8"/>
+        <rect x="0" y="0" width="4" height="100" fill="var(--service)" rx="2"/>
+        <text class="cname" x="146" y="30" text-anchor="middle">CrawlerService</text>
+        <line class="divider" x1="12" y1="42" x2="280" y2="42"/>
+        <text class="member" x="16" y="62">– sources: JobSource[]</text>
+        <text class="member" x="16" y="80">+ search(role, loc): Job[]</text>
+        <text class="note"   x="16" y="96">fans out · dedupes by id</text>
+      </g>
+
+      <!-- source boxes -->
+      <g transform="translate(14,180)">  <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">GreenhouseSource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">boards-api JSON</text><text class="note done" x="14" y="90">✓ verified · 490 roles</text></g>
+      <g transform="translate(208,180)"> <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">LeverSource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">api.lever.co JSON</text><text class="note done" x="14" y="90">✓ reachable</text></g>
+      <g transform="translate(402,180)"> <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">AshbySource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">posting-api JSON</text></g>
+      <g transform="translate(596,180)"> <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">WorkdaySource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">myworkdayjobs POST</text><text class="note done" x="14" y="90">✓ built · 4 tenants</text></g>
+      <g transform="translate(790,180)"> <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">RemoteOKSource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">public feed</text><text class="note done" x="14" y="90">✓ shipped</text></g>
+      <g transform="translate(984,180)"> <rect class="box" width="180" height="96" rx="8"/><rect width="4" height="96" fill="var(--service)" rx="2"/><text class="cname" x="90" y="26" text-anchor="middle" font-size="13">IndeedSource</text><line class="divider" x1="12" y1="36" x2="168" y2="36"/><text class="member" x="14" y="56">+ search(): Job[]</text><text class="note" x="14" y="76">Playwright scrape</text><text class="note warn" x="14" y="90">⚠ bot-limited</text></g>
+
+      <!-- Job entity -->
+      <g transform="translate(360,330)">
+        <rect class="box" width="250" height="140" rx="8"/>
+        <rect width="4" height="140" fill="var(--entity)" rx="2"/>
+        <text class="cname" x="125" y="28" text-anchor="middle">Job</text>
+        <line class="divider" x1="12" y1="40" x2="238" y2="40"/>
+        <text class="member" x="16" y="60">+ id, title, company</text>
+        <text class="member" x="16" y="78">+ location, salary, url</text>
+        <text class="member" x="16" y="96">+ description, source</text>
+        <text class="member" x="16" y="118" font-weight="700">+ categories: JobType[]</text>
+      </g>
+
+      <!-- JobClassifier -->
+      <g transform="translate(688,340)">
+        <rect class="box" width="264" height="88" rx="8"/>
+        <rect width="4" height="88" fill="var(--service)" rx="2"/>
+        <text class="cname" x="132" y="30" text-anchor="middle">JobClassifier</text>
+        <line class="divider" x1="12" y1="42" x2="252" y2="42"/>
+        <text class="member" x="16" y="62">+ classify(job): JobType[]</text>
+        <text class="note"   x="16" y="80">Ollama LLM  ·  or keyword rules</text>
+      </g>
+
+      <!-- persistence row -->
+      <g transform="translate(90,540)">
+        <rect class="box" width="250" height="96" rx="8"/><rect width="4" height="96" fill="var(--store)" rx="2"/>
+        <text class="cname" x="125" y="26" text-anchor="middle">RoleService</text>
+        <line class="divider" x1="12" y1="36" x2="238" y2="36"/>
+        <text class="member" x="16" y="55">+ roles, lastCrawledAt</text>
+        <text class="member" x="16" y="72">+ isDue(role): bool</text>
+        <text class="note done" x="16" y="88">✓ built · roles table</text>
+      </g>
+      <g transform="translate(460,540)">
+        <rect class="box" width="280" height="96" rx="8"/><rect width="4" height="96" fill="var(--store)" rx="2"/>
+        <text class="cname" x="140" y="28" text-anchor="middle">JobCacheService</text>
+        <line class="divider" x1="12" y1="40" x2="268" y2="40"/>
+        <text class="member" x="16" y="60">+ remember(job, type)</text>
+        <text class="member" x="16" y="78">+ freshJobs(type, ttl) · popular()</text>
+      </g>
+      <g transform="translate(830,540)">
+        <rect class="box" width="250" height="96" rx="8"/><rect width="4" height="96" fill="var(--store)" rx="2"/>
+        <text class="cname" x="125" y="28" text-anchor="middle">TrackerService</text>
+        <line class="divider" x1="12" y1="40" x2="238" y2="40"/>
+        <text class="member" x="16" y="60">+ save(job, status)</text>
+        <text class="member" x="16" y="78">+ getAll(): Application[]</text>
+      </g>
+
+      <!-- REST API -->
+      <g transform="translate(90,700)">
+        <rect class="box" width="990" height="76" rx="8"/>
+        <rect width="4" height="76" fill="var(--accent)" rx="2"/>
+        <text class="cname" x="495" y="28" text-anchor="middle">REST API · Express</text>
+        <line class="divider" x1="12" y1="40" x2="978" y2="40"/>
+        <text class="member" x="495" y="58" text-anchor="middle">GET /api/job-types · GET /api/jobs?types=… · GET/POST/DELETE /api/roles · POST /api/jobs/refresh · POST /api/crawl · GET /api/jobs/cached</text>
+      </g>
+
+      <!-- Dashboard UI -->
+      <g transform="translate(90,820)">
+        <rect class="box" width="990" height="64" rx="8"/>
+        <rect width="4" height="64" fill="var(--ui)" rx="2"/>
+        <text class="cname" x="495" y="27" text-anchor="middle">Dashboard SPA</text>
+        <line class="divider" x1="12" y1="38" x2="978" y2="38"/>
+        <text class="member" x="495" y="56" text-anchor="middle">multi-select job-type dropdown  →  results from every source, grouped by type</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="flow">
+    <h2>Runtime flow — pick types → see roles from all sources</h2>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="t">Pick job types</div><div class="d">Multi-select in the dropdown</div></div>
+      <div class="arrowdot">→</div>
+      <div class="step"><div class="n">02</div><div class="t">GET /api/jobs?types=…</div><div class="d">One request, many types</div></div>
+      <div class="arrowdot">→</div>
+      <div class="step"><div class="n">03</div><div class="t">Fresh in cache?</div><div class="d">Yes → serve, no crawl</div></div>
+      <div class="arrowdot">→</div>
+      <div class="step"><div class="n">04</div><div class="t">Else fan out</div><div class="d">Greenhouse · Lever · Ashby · Workday · RemoteOK</div></div>
+      <div class="arrowdot">→</div>
+      <div class="step"><div class="n">05</div><div class="t">Classify + cache</div><div class="d">Tag JobType[], store hits</div></div>
+      <div class="arrowdot">→</div>
+      <div class="step"><div class="n">06</div><div class="t">Grouped results</div><div class="d">Rendered by type in the UI</div></div>
+    </div>
+  </div>
+
+  <footer>
+    Source of truth for print: <code>docs/architecture.tex</code> → <code>docs/architecture.pdf</code> (compiles with <code>pdflatex</code>). This page mirrors it for on-screen review. <span class="done">✓ = verified live</span> · <span class="warn">⚠ = bot-limited</span>. Tell me what to change — classifier (LLM vs rules), which sources to build first, or the box/relationship layout.
+  </footer>
+</div>

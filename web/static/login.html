@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in — Apsis</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='black'/><circle cx='50' cy='50' r='22' fill='none' stroke='white' stroke-width='6'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#08080a; --surface:#111114; --border:#26262c; --border-h:#34343c;
+    --text:#f3f3f5; --muted:#9a9aa4; --faint:#6a6a74; --accent:#a78bfa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text);
+    min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:1.5rem;
+    position:relative; overflow:hidden;
+  }
+  .orb { position:fixed; border-radius:50%; filter:blur(90px); opacity:.45; pointer-events:none; }
+  .orb-1 { width:420px; height:420px; background:#5b21b6; top:-140px; left:-120px; }
+  .orb-2 { width:380px; height:380px; background:#1e3a8a; bottom:-140px; right:-120px; }
+  .card {
+    position:relative; z-index:1; width:100%; max-width:380px;
+    background:rgba(17,17,20,.7); backdrop-filter:blur(18px) saturate(140%);
+    border:1px solid var(--border); border-radius:20px; padding:2.25rem 2rem;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+  }
+  .brand { display:flex; align-items:center; gap:.6rem; margin-bottom:1.75rem; }
+  .brand .logo {
+    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(140deg,#fff,#bdbdc4);
+  }
+  .brand .logo span { width:13px; height:13px; border-radius:50%; border:2.5px solid #000; display:block; }
+  .brand b { font-size:1rem; letter-spacing:-.02em; }
+  h1 { font-size:1.4rem; font-weight:800; letter-spacing:-.03em; margin-bottom:.35rem; }
+  p.sub { font-size:.82rem; color:var(--muted); margin-bottom:1.6rem; }
+  label { display:block; font-size:.72rem; font-weight:600; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--faint); margin:0 0 .4rem .1rem; }
+  .field { margin-bottom:1.1rem; }
+  input {
+    width:100%; background:var(--surface); border:1px solid var(--border); border-radius:11px;
+    padding:.7rem .85rem; color:var(--text); font-size:.9rem; transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(167,139,250,.18); }
+  button {
+    width:100%; margin-top:.4rem; padding:.75rem; border:none; border-radius:11px; cursor:pointer;
+    background:linear-gradient(135deg,#fff,#d4d4dc); color:#000; font-weight:700; font-size:.9rem;
+    transition:transform .12s, opacity .15s;
+  }
+  button:hover { transform:translateY(-1px); }
+  button:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+  .err {
+    display:none; margin-top:1rem; padding:.6rem .8rem; border-radius:10px; font-size:.82rem;
+    background:rgba(248,81,73,.12); border:1px solid rgba(248,81,73,.35); color:#ff8b84;
+  }
+  .hint { margin-top:1.4rem; font-size:.72rem; color:var(--faint); text-align:center; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <form class="card" id="login-form" autocomplete="on">
+    <div class="brand">
+      <span class="logo"><span></span></span>
+      <b>Apsis</b>
+    </div>
+    <h1>Welcome back</h1>
+    <p class="sub">Sign in to your job application dashboard.</p>
+
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required autofocus />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+    </div>
+
+    <button type="submit" id="submit-btn">Sign in</button>
+    <div class="err" id="err"></div>
+    <p class="hint">Credentials are set in your <code>.env</code> (AUTH_USERNAME / AUTH_PASSWORD).</p>
+  </form>
+
+<script>
+'use strict';
+const TOKEN_KEY = 'apsis_token';
+
+// Already signed in? Skip straight to the dashboard.
+if (localStorage.getItem(TOKEN_KEY)) location.replace('/dashboard');
+
+const form = document.getElementById('login-form');
+const btn = document.getElementById('submit-btn');
+const errBox = document.getElementById('err');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    if (!res.ok) {
+      const { detail } = await res.json().catch(() => ({ detail: 'Login failed' }));
+      throw new Error(detail || 'Login failed');
+    }
+    const { token } = await res.json();
+    localStorage.setItem(TOKEN_KEY, token);
+    location.replace('/dashboard');
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+});
+</script>
+</body>
+</html>

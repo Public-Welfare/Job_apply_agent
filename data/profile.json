@@ -1,0 +1,97 @@
+{
+  "personal": {
+    "name": "Tanay Agrawal",
+    "email": "atany185@gmail.com",
+    "phone": "+91 8005860691",
+    "linkedin": "linkedin.com/in/tanayagrawal",
+    "github": "github.com/tanayagrawal",
+    "codeforces": "codeforces.com/profile/tanayagrawal",
+    "location": "Udaipur, Rajasthan"
+  },
+  "summary": "Pre-final year ECE undergrad at IIIT Allahabad with hands-on experience building production-grade full-stack systems. Currently Tech Lead at ADAinsys, shipping Node.js/Express APIs serving 100+ daily users. Strong in backend architecture, database optimization, and AI agent development using local LLMs.",
+  "skills": {
+    "languages": ["JavaScript (ES6+)", "TypeScript", "Python", "C++"],
+    "frameworks": ["Node.js", "Express.js", "React.js", "Next.js 14", "Socket.io"],
+    "tools": ["Git", "Docker", "Postman", "Playwright", "Prisma ORM", "JWT", "REST API Design", "Agile"],
+    "databases": ["PostgreSQL", "MongoDB"]
+  },
+  "experience": [
+    {
+      "company": "ADAinsys Pvt. Ltd.",
+      "role": "SDE Intern & Tech Lead",
+      "duration": "May 2025 – Present",
+      "location": "Remote",
+      "bullets": [
+        "Engineered production-grade RESTful APIs using Node.js and Express.js supporting 100+ daily active users with robust error handling, request validation, and comprehensive logging; led 2 full-stack projects as Tech Lead managing sprint planning, code reviews, and technical decision-making",
+        "Redesigned PostgreSQL database schemas with normalization, indexing strategies, and query optimization achieving 30% faster data retrieval; implemented JWT authentication and RBAC securing 15+ API endpoints",
+        "Mentored 3-developer teams on two projects; established Git branching strategies and code review standards improving team velocity by 25% and reducing merge conflicts by 40%"
+      ]
+    },
+    {
+      "company": "ADAinsys Pvt. Ltd.",
+      "role": "Tech Lead — No Dues Management System",
+      "duration": "2025",
+      "location": "Remote",
+      "bullets": [
+        "Led development of automated student clearance platform using MERN stack with PostgreSQL for transaction management; implemented department-wise approval workflows with JWT authentication",
+        "Reduced manual processing time by 90% and enabled real-time status tracking for 500+ students"
+      ]
+    },
+    {
+      "company": "ADAinsys Pvt. Ltd.",
+      "role": "Tech Lead — Timetable Design Web App",
+      "duration": "2025",
+      "location": "Remote",
+      "bullets": [
+        "Built intelligent conflict-free scheduling engine using Node.js with constraint satisfaction algorithms managing 50+ courses across 10 classrooms with automatic clash detection",
+        "Standardized Git workflows including feature branching, CI practices, and code review processes improving team collaboration and code quality"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "IIIT Allahabad",
+      "degree": "B.Tech. in Electronics and Communication Engineering",
+      "year": "Expected 2027",
+      "gpa": "",
+      "coursework": "Data Structures & Algorithms, Digital Logic Design, Signals & Systems, Communication Systems, VLSI, Computer Networks, AI/ML"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Financial AI Assistant — Production-Scale AI Agent",
+      "description": "Full-stack microservices financial assistant using Next.js 14, Express.js, TypeScript, Groq Llama 3.3-70b with RAG pipeline, real-time WebSocket communication, Prisma ORM, Yahoo Finance API, CoinGecko API, and TradingView charts. Delivers real-time NSE/BSE stock tracking, portfolio analytics, and live news aggregation.",
+      "tech": ["Next.js 14", "Express.js", "TypeScript", "PostgreSQL", "Socket.io", "Groq Llama 3.3-70b", "Prisma ORM", "RAG"],
+      "link": "github.com/tanayagrawal/financial-ai-assistant"
+    },
+    {
+      "name": "Jarvis AI-Agent — Voice-Controlled Computer Assistant",
+      "description": "Intelligent voice-controlled desktop assistant using Ollama LLM (zero cost), Python speech recognition, Spotify Web API, Windows PowerShell automation, and Playwright browser automation. Enables hands-free computer control including app launching, music management, and web navigation — fully offline, no cloud dependencies.",
+      "tech": ["Python", "Ollama LLM", "Playwright", "Spotify API", "PowerShell", "Speech Recognition"],
+      "link": "github.com/tanayagrawal/jarvis-ai-agent"
+    }
+  ],
+  "achievements": [
+    "Codeforces Specialist — Peak Rating 1423",
+    "JEE Advanced 2023 — AIR 12,995",
+    "JEE Mains 2023 — AIR 9,558"
+  ],
+  "preferences": {
+    "roles": [
+      "SDE Intern",
+      "Software Engineering Intern",
+      "Full Stack Developer Intern",
+      "Backend Developer Intern",
+      "AI Intern",
+      "AI/ML Intern",
+      "Machine Learning Intern",
+      "Node.js Developer",
+      "Full Stack Engineer",
+      "Software Engineer"
+    ],
+    "locations": ["Remote", "Bangalore", "Hyderabad", "Mumbai", "Pune", "Noida", "Gurgaon"],
+    "min_salary_lpa": 6,
+    "avoid_keywords": ["bond", "3 year bond", "service based", "no remote", "only on-site"],
+    "avoid_companies": []
+  }
+}
