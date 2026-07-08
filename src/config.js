@@ -35,8 +35,13 @@ const config = {
 
   // Automatic daily crawl + job-description cache.
   AUTO_CRAWL: bool(process.env.AUTO_CRAWL, true),
+  // Scheduled multi-source discovery (ATS APIs only — no browser/LLM needed,
+  // so it's safe to leave on even where the agent crawl is off).
+  AUTO_DISCOVER: bool(process.env.AUTO_DISCOVER, true),
   CRAWL_INTERVAL_HOURS: int(process.env.CRAWL_INTERVAL_HOURS, 24),
   JOB_CACHE_TTL_HOURS: int(process.env.JOB_CACHE_TTL_HOURS, 24),
+  // Cached jobs not seen for this many days are pruned (0 disables pruning).
+  JOB_CACHE_PRUNE_DAYS: int(process.env.JOB_CACHE_PRUNE_DAYS, 14),
 
   // Multi-source discovery (ATS public APIs). Cap per company board so a
   // discovery run stays bounded even across many large boards.

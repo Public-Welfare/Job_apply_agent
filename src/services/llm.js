@@ -11,9 +11,9 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 const OpenAI = require('openai');
 const { config } = require('../config');
+const { getMeta } = require('./metaService');
 
 // OpenAI-compatible providers with a free tier. Each: base URL + a sensible
 // default model + where to grab a free key.
@@ -50,21 +50,28 @@ const PROVIDERS = {
   },
 };
 
-const TOKEN_PATH = config.LLM_TOKEN_PATH;
+const TOKEN_PATH = config.LLM_TOKEN_PATH; // legacy file — migrated into the meta table
+const META_KEY = 'llm_token';
 
 let cache = null; // { at:number, result }
 
 function loadRuntime() {
+  const meta = getMeta();
+  const fromDb = meta.getJson(META_KEY);
+  if (fromDb) return fromDb;
+  // One-time import of the legacy data/llm.json into the meta table.
   try {
-    return JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
+    const obj = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
+    meta.setJson(META_KEY, obj);
+    fs.renameSync(TOKEN_PATH, TOKEN_PATH + '.migrated');
+    return obj;
   } catch {
     return {};
   }
 }
 
 function saveRuntime(obj) {
-  fs.mkdirSync(path.dirname(TOKEN_PATH), { recursive: true });
-  fs.writeFileSync(TOKEN_PATH, JSON.stringify(obj), 'utf-8');
+  getMeta().setJson(META_KEY, obj);
 }
 
 // Resolve the effective API config from runtime (dashboard) then env.
@@ -161,8 +168,9 @@ function setToken({ provider, api_key, model } = {}) {
 }
 
 function clearToken() {
+  getMeta().delete(META_KEY);
   try {
-    fs.unlinkSync(TOKEN_PATH);
+    fs.unlinkSync(TOKEN_PATH); // clean up a legacy file too, if present
   } catch {
     /* ignore */
   }

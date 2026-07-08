@@ -11,7 +11,9 @@ data/applications.db
 data/applications.db-shm
 data/applications.db-wal
 data/crawl_state.json
+data/crawl_state.json.migrated
 data/llm.json
+data/llm.json.migrated
 data/applications.json
 data/applications.json.migrated
 

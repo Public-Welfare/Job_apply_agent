@@ -85,6 +85,43 @@ class TrackerService {
     return rows.map((r) => this._rowToDict(r));
   }
 
+  /** Counts per status plus total, computed in SQL. */
+  stats() {
+    const out = { total: 0, applied: 0, not_applied: 0, interview: 0, offer: 0, rejected: 0 };
+    const rows = this._db
+      .prepare('SELECT status, COUNT(*) AS c FROM applications GROUP BY status')
+      .all();
+    for (const r of rows) {
+      if (r.status in out) out[r.status] = r.c;
+      out.total += r.c;
+    }
+    return out;
+  }
+
+  /** Filtered + sorted list — filtering happens in SQL, not in JS. */
+  query({ status = null, source = null, search = null, sort = 'newest' } = {}) {
+    const where = [];
+    const params = [];
+    if (status) {
+      where.push('status = ?');
+      params.push(status);
+    }
+    if (source) {
+      where.push('source = ?');
+      params.push(source);
+    }
+    if (search) {
+      where.push("(LOWER(title) LIKE ? OR LOWER(COALESCE(company, '')) LIKE ?)");
+      const q = `%${String(search).toLowerCase()}%`;
+      params.push(q, q);
+    }
+    const sql =
+      'SELECT * FROM applications' +
+      (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
+      ` ORDER BY applied_at ${sort === 'newest' ? 'DESC' : 'ASC'}`;
+    return this._db.prepare(sql).all(...params).map((r) => this._rowToDict(r));
+  }
+
   // ── internals ─────────────────────────────────────────────────────────────
 
   _initDb() {

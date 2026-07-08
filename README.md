@@ -200,7 +200,9 @@ ollama serve
 | `MAX_JOBS_PER_RUN`   | `20`                           | Cap on jobs processed per crawl                |
 | `CRAWLER_HEADFUL`    | `false`                        | `true` shows the browser while scraping        |
 | `AUTO_CRAWL`         | `true`                         | Run the background daily crawl when the server is up |
+| `AUTO_DISCOVER`      | `true`                         | Also run multi-source discovery on the same schedule (no browser/LLM needed) |
 | `CRAWL_INTERVAL_HOURS` | `24`                         | How often the auto-crawl runs                  |
+| `JOB_CACHE_PRUNE_DAYS` | `14`                         | Prune cached jobs unseen for this many days (`0` = never) |
 | `JOB_CACHE_TTL_HOURS`| `24`                           | How long cached descriptions are served without re-crawling (`0` = always live) |
 | `AUTH_USERNAME`      | `admin`                        | Dashboard login username — **change it**       |
 | `AUTH_PASSWORD`      | `changeme`                     | Dashboard login password — **change it**       |
@@ -521,15 +523,48 @@ dashboard. Verified end-to-end (565 jobs across 4 sources).
   provider when Ollama is down; NO_LLM when neither; admin-only token set (user→403);
   real resume import still works through the refactored client.
 
+**State (2026-07-09): backend redesign — routers, SQL filtering, meta table,
+pruning, scheduler discovery, security hardening (JS)**
+
+- **server.js split up.** It's now a thin composition root; route logic moved to
+  `web/routes/{auth,llm,applications,resume,jobs,crawl}.js` (routers that take
+  service deps), shared helpers in `web/httpError.js` + `web/rateLimit.js`, and
+  background machinery in `src/services/{crawlRunner,discoveryRunner,scheduler}.js`
+  with a capped-log state helper `src/services/jobState.js`.
+- **SQL-side filtering** — `TrackerService.stats()` (GROUP BY) and
+  `TrackerService.query({status,source,search,sort})` (WHERE/LIKE/ORDER BY)
+  replace load-everything-and-filter-in-JS; `/api/resume/:id` uses `getOne`.
+- **meta(key,value) table** (`src/services/metaService.js`, lazy singleton
+  `getMeta()`) replaces the loose JSON state files. `crawl_state.json` and
+  `llm.json` are auto-migrated on first run and renamed `*.migrated`.
+  `CRAWL_STATE_PATH`/`LLM_TOKEN_PATH` only matter for that legacy migration now.
+- **Cache pruning** — `JobCacheService.prune(days)`; runs at server boot and
+  after every discovery. `JOB_CACHE_PRUNE_DAYS` (default 14, 0 = off).
+- **Scheduler now also runs discovery** (`AUTO_DISCOVER`, default true) on the
+  same `CRAWL_INTERVAL_HOURS` cadence; discovery `last_run` persists in meta.
+- **Incremental status logs** — `/api/crawl/status?since=N` and
+  `/api/jobs/refresh/status?since=N` return only new lines (`log_offset` is the
+  cursor); logs capped at 500 lines in memory. Dashboard crawl modal appends
+  instead of re-rendering. No-`since` calls still return the full capped log.
+- **Crawl roles via argv** — the server spawns `node main.js crawl --roles=<json>`
+  (legacy `CRAWL_ROLES` env still honoured); leftover Python env vars dropped.
+- **Security**: `/api/login` rate-limited (10/15min per IP, in-memory);
+  multer upload capped at 2 MB (413); with `NODE_ENV=production` the server
+  **refuses to boot** on default `JWT_SECRET`/`AUTH_PASSWORD` (warns on default
+  user password); **download tickets** — `GET /api/download-ticket` issues a
+  60-second `typ:'dl'` JWT and `?token=` query auth now accepts ONLY those, so
+  the session JWT never appears in URLs. The dashboard's `dlOpen()` helper
+  fetches a ticket per download.
+- **Verified**: 30-check in-process smoke suite green (login/401/403/404/413
+  paths, SQL filters, ticket-vs-session query auth, since-offset logs, meta
+  migration, rate-limit 429); `node main.js status` exit 0; prod-guard exit 1
+  with default password.
+
 **Not done / next**
-- **Port discovery + roles + Workday + crawl-gating + resume template/variants + LLM fallback to Python** — currently JS-only.
-- **Cache pruning** still open (`job_cache` grows unbounded) — add `prune()`.
+- **Port the JS-only features to Python** (`python/` is behind: discovery,
+  roles, Workday, crawl-gating, template/variants, LLM fallback, this redesign)
+  — or retire the Python copy.
 - Discovery `role=''` takes the first N per board (arbitrary order); consider
   ranking or a relevance filter.
-- Wire the daily scheduler to also run discovery (currently only the agent crawl).
 - Surface roles (with due/next_due) in the dashboard UI — API is ready.
-
-**Earlier next steps (still apply)**
-- **Cache pruning**: `job_cache` grows unbounded; add a `prune()` (drop entries older than N days).
 - Consider exposing `hits`/`last_seen_at` in the dashboard for a "trending roles" view.
-- Decide whether to retire the Python version or keep both in sync going forward.

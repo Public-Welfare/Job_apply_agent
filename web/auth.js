@@ -48,6 +48,19 @@ function createToken(username, role = 'user') {
   return jwt.sign(payload, config.JWT_SECRET, { algorithm: 'HS256' });
 }
 
+/**
+ * Short-lived (60s) token used only for <a href> downloads, so the real
+ * session JWT never appears in a URL (browser history, server logs).
+ */
+function createDownloadToken(username, role = 'user') {
+  const now = Math.floor(Date.now() / 1000);
+  return jwt.sign(
+    { sub: username, role, typ: 'dl', iat: now, exp: now + 60 },
+    config.JWT_SECRET,
+    { algorithm: 'HS256' }
+  );
+}
+
 function decode(token) {
   return jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
 }
@@ -59,16 +72,23 @@ function requireAuth(req, res, next) {
   const authorization = req.headers.authorization;
   const queryToken = req.query.token;
   let raw = null;
+  let fromQuery = false;
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     raw = authorization.slice(7).trim();
   } else if (queryToken) {
     raw = queryToken;
+    fromQuery = true;
   }
   if (!raw) {
     return res.status(401).json({ detail: 'Not authenticated' });
   }
   try {
     const payload = decode(raw);
+    // Only short-lived download tickets may travel in the URL — a leaked one
+    // expires in 60s, unlike the session JWT.
+    if (fromQuery && payload.typ !== 'dl') {
+      return res.status(401).json({ detail: 'URL auth requires a download ticket (GET /api/download-ticket)' });
+    }
     req.user = payload.sub || '';
     req.role = payload.role || 'user';
     return next();
@@ -87,4 +107,4 @@ function requireAdmin(req, res, next) {
   });
 }
 
-module.exports = { verifyCredentials, createToken, requireAuth, requireAdmin };
+module.exports = { verifyCredentials, createToken, createDownloadToken, requireAuth, requireAdmin };

@@ -22,14 +22,16 @@ async function crawl() {
   const profile = loadProfile();
   const locations = profile.preferences.locations;
 
-  // The web UI can pass a chosen subset of roles via CRAWL_ROLES; otherwise use
-  // every role from the profile.
+  // The web UI passes a chosen subset of roles as --roles=<json> (legacy env
+  // CRAWL_ROLES still works); otherwise use every role from the profile.
+  const rolesArg = process.argv.find((a) => a.startsWith('--roles='));
   let selected = [];
   try {
-    selected = JSON.parse(process.env.CRAWL_ROLES || '[]');
+    selected = JSON.parse(rolesArg ? rolesArg.slice('--roles='.length) : process.env.CRAWL_ROLES || '[]');
   } catch {
     selected = [];
   }
+  if (!Array.isArray(selected)) selected = [];
   const roles = selected.length ? selected : profile.preferences.roles;
 
   console.log(`\n${C.bold(C.cyan(' Job Apply Agent'))}\n`);

@@ -674,6 +674,18 @@ const TOKEN_KEY = 'apsis_token';
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
 function logout() { localStorage.removeItem(TOKEN_KEY); location.replace('/login'); }
 
+// Downloads: <a> links can't send the Authorization header, so fetch a
+// short-lived ticket and open the URL with it — the real session JWT never
+// appears in a URL (browser history, server logs).
+async function dlOpen(url) {
+  try {
+    const { token } = await API.get('/api/download-ticket');
+    window.open(url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token), '_blank');
+  } catch (e) {
+    UI.toast('Could not authorize the download — try signing in again', 'error');
+  }
+}
+
 // No token → bounce to the login page before anything renders.
 if (!getToken()) location.replace('/login');
 
@@ -783,10 +795,11 @@ async function runImport() {
       throw new Error(detail || 'Import failed');
     }
     const data = await res.json();
-    const t = encodeURIComponent(getToken());
     document.getElementById('import-name').textContent = data.name || 'Resume';
-    document.getElementById('import-pdf').href = data.base.pdf_url + '?token=' + t;
-    document.getElementById('import-tex').href = data.base.tex_url + '?token=' + t;
+    const pdfLink = document.getElementById('import-pdf');
+    const texLink = document.getElementById('import-tex');
+    pdfLink.onclick = (e) => { e.preventDefault(); dlOpen(data.base.pdf_url); };
+    texLink.onclick = (e) => { e.preventDefault(); dlOpen(data.base.tex_url); };
     const vbox = document.getElementById('import-variants');
     vbox.innerHTML = (data.variants && data.variants.length)
       ? '<div class="text-xs font-semibold uppercase tracking-widest mt-4 mb-2" style="color:var(--faint)">Specialised versions</div>'
@@ -794,8 +807,8 @@ async function runImport() {
             `<div class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 mb-1.5" style="background:var(--elevated);border:1px solid var(--border)">`
             + `<span class="text-xs truncate" style="color:var(--text)">${esc(v.label)}${v.tailored ? '' : ' <span style=\'color:var(--faint)\'>· same as base</span>'}</span>`
             + `<span class="flex gap-3 flex-shrink-0">`
-            + `<a href="${v.pdf_url}?token=${t}" target="_blank" class="text-xs font-medium" style="color:var(--accent)">PDF</a>`
-            + `<a href="${v.tex_url}?token=${t}" target="_blank" class="text-xs" style="color:var(--muted)">.tex</a>`
+            + `<a href="#" data-url="${esc(v.pdf_url)}" onclick="event.preventDefault();dlOpen(this.dataset.url)" class="text-xs font-medium" style="color:var(--accent)">PDF</a>`
+            + `<a href="#" data-url="${esc(v.tex_url)}" onclick="event.preventDefault();dlOpen(this.dataset.url)" class="text-xs" style="color:var(--muted)">.tex</a>`
             + `</span></div>`
           ).join('')
       : '';
@@ -991,7 +1004,7 @@ function cardHtml(app, idx) {
     <div class="flex items-center justify-between pt-3" style="border-top:1px solid var(--border)" onclick="event.stopPropagation()">
       <div class="flex items-center gap-0.5">
         ${app.resume_path ? `
-        <a href="/api/resume/${esc(app.id)}?token=${encodeURIComponent(getToken())}" target="_blank" title="Download PDF Resume" class="action-btn">
+        <a href="#" data-url="/api/resume/${esc(app.id)}" onclick="event.preventDefault();dlOpen(this.dataset.url)" title="Download PDF Resume" class="action-btn">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
@@ -1212,13 +1225,22 @@ const App = {
     indicator.classList.remove('hidden');
     indicator.classList.add('flex');
 
+    // Poll incrementally: only lines after `seen` come back each tick.
+    let seen = 0;
+    logEl.innerHTML = '';
     async function tick() {
       try {
-        const s = await API.get('/api/crawl/status');
-        logEl.innerHTML = s.log.map(line =>
-          `<div class="log-line ${logLineClass(line)}">${esc(line)}</div>`
-        ).join('');
-        logEl.scrollTop = logEl.scrollHeight;
+        const s = await API.get('/api/crawl/status?since=' + seen);
+        if (s.log_offset < seen) { seen = 0; logEl.innerHTML = ''; } // a new run started
+        else {
+          if (s.log.length) {
+            logEl.insertAdjacentHTML('beforeend', s.log.map(line =>
+              `<div class="log-line ${logLineClass(line)}">${esc(line)}</div>`
+            ).join(''));
+            logEl.scrollTop = logEl.scrollHeight;
+          }
+          seen = s.log_offset;
+        }
 
         if (s.running) {
           state._pollTimer = setTimeout(tick, 1500);

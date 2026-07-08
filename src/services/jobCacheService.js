@@ -124,6 +124,16 @@ class JobCacheService {
     return jobs;
   }
 
+  /**
+   * Drop cached jobs not seen for `days` days — the cache otherwise grows
+   * unbounded (each discovery run adds hundreds of rows). Returns rows deleted.
+   */
+  prune(days) {
+    if (!days || days <= 0) return 0;
+    const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+    return this._db.prepare('DELETE FROM job_cache WHERE last_seen_at < ?').run(cutoff).changes;
+  }
+
   stats() {
     const total = this._db.prepare('SELECT COUNT(*) AS c FROM job_cache').get().c;
     const hits = this._db.prepare('SELECT COALESCE(SUM(hits), 0) AS s FROM job_cache').get().s;

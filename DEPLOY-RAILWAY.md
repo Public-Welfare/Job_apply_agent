@@ -25,14 +25,13 @@ Service → **Variables** → add:
 
 | Variable | Value | Why |
 | --- | --- | --- |
-| `JWT_SECRET` | *(a long random string)* | Signs login tokens — **must change** |
-| `AUTH_USERNAME` / `AUTH_PASSWORD` | your admin login | **change from defaults** |
-| `USER_USERNAME` / `USER_PASSWORD` | your user login | **change from defaults** |
-| `DB_PATH` | `/app/storage/applications.db` | DB on the volume |
-| `CRAWL_STATE_PATH` | `/app/storage/crawl_state.json` | state on the volume |
-| `LLM_TOKEN_PATH` | `/app/storage/llm.json` | saved AI token on the volume |
+| `JWT_SECRET` | *(a long random string)* | Signs login tokens — **the server refuses to boot in production with the default** |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | your admin login | **default password also blocks boot in production** |
+| `USER_USERNAME` / `USER_PASSWORD` | your user login | change from defaults |
+| `DB_PATH` | `/app/storage/applications.db` | DB on the volume (crawl state + saved AI token live inside it now) |
 | `RESUMES_DIR` | `/app/storage/resumes` | generated PDFs on the volume |
-| `AUTO_CRAWL` | `false` | don't auto-run the agent crawl (recommended) |
+| `AUTO_CRAWL` | `false` | don't auto-run the agent crawl (needs a browser — recommended off) |
+| `AUTO_DISCOVER` | `true` | daily multi-source discovery — plain JSON APIs, works fine on Railway |
 
 Optional — set the AI now instead of in the UI:
 
@@ -51,8 +50,8 @@ Optional — set the AI now instead of in the UI:
 - Log in with your `AUTH_USERNAME` / `AUTH_PASSWORD`.
 - If you didn't set `LLM_API_KEY`: open **Create Resume**. If Ollama isn't
   detected (it won't be on Railway), it shows a **provider + API-key** box —
-  paste a free **Groq** key and Save. That's stored on the volume and used for
-  all AI features.
+  paste a free **Groq** key and Save. That's stored in the database (on the
+  volume) and used for all AI features.
 - **Discover** works out of the box (ATS APIs, no AI needed for browsing).
 
 ## What works / what doesn't on Railway
