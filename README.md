@@ -1,16 +1,17 @@
-# Job Apply Agent
+﻿# Job Apply Agent (Apsis)
 
-An agentic job-hunting tool. It crawls job boards, filters listings against your
-preferences, uses a local LLM to tailor your resume for each match, renders the
-result to a PDF, and tracks everything in a small web dashboard. The dashboard is
-behind JWT login and can also **re-format any LaTeX resume into a clean template**
-using the local LLM.
+An agentic job-hunting tool in **Node.js** with a **React dashboard**. It crawls
+job boards, filters listings against your preferences, uses an LLM (local Ollama
+or a free hosted provider) to tailor your resume for each match, renders the
+result to a PDF, and tracks everything behind a JWT login. It can also
+**re-format any resume (text or LaTeX) into a clean template**, with optional
+ATS-tuned variants per job type.
 
-The server **auto-crawls once a day** in the background and **caches the most-used
-job descriptions**, so opening the dashboard serves popular listings instantly —
-without waiting on a fresh crawl.
+The server **auto-crawls and auto-discovers once a day** in the background and
+**caches job descriptions** (hit-ranked, pruned after 14 days), so the dashboard
+serves popular listings instantly.
 
-The codebase is built around the **Strategy pattern** + **dependency injection**:
+The backend is built around the **Strategy pattern** + **dependency injection**:
 job sources and resume customizers are pluggable behind interfaces, so new boards
 or LLMs can be added without touching the orchestration code.
 
@@ -19,45 +20,35 @@ or LLMs can be added without touching the orchestration code.
 ## How it works
 
 ```
-main.py crawl
+node main.js crawl
    │
    ▼
-AgentOrchestrator ──(Ollama, tool-calling loop, max 30 turns)
+AgentOrchestrator ──(LLM tool-calling loop, max 30 turns)
    │
-   ├─ search_jobs   → JobCacheService.fresh_jobs() ─ fresh? ─► serve from cache (no crawl)
+   ├─ search_jobs   → JobCacheService.freshJobs() ─ fresh? ─► serve from cache (no crawl)
    │                   └─ else CrawlerService → [IndeedSource, RemoteOKSource] → [Job]
    │                          └─ JobCacheService.remember()   (hit-count ranking)
-   ├─ process_job   → filter_by_preferences  (skip non-matches)
-   │                   └─ ResumeService → OllamaCustomizer → generate_pdf → resumes/*.pdf
+   ├─ process_job   → filterByPreferences  (skip non-matches)
+   │                   └─ ResumeService → OllamaCustomizer → generatePdf → resumes/*.pdf
    │                       └─ TrackerService.save(status="not_applied")
-   └─ get_applications → TrackerService.get_all()
+   └─ get_applications → TrackerService.getAll()
                                    │
                                    ▼
-                         data/applications.db  (SQLite: applications + job_cache)
+                 data/applications.db  (SQLite: applications + job_cache + roles + meta)
                                    │
-                          web/server.py (FastAPI) ──► dashboard SPA
+                        web/server.js (Express) ──► React dashboard (web/static/dist)
                                    │
-                          _scheduler_loop() ──► auto-crawl every CRAWL_INTERVAL_HOURS
+                        scheduler ──► daily auto-crawl + auto-discovery + cache prune
 ```
 
 The agent **finds and tailors** roles but does **not** submit them. Processed jobs
 are saved with status `not_applied` so you review the generated resume before
 applying yourself.
 
-### Auto-crawl + job-description cache
-
-- **Daily auto-crawl** — when `web/server.py` is running with `AUTO_CRAWL=true`, a
-  background loop (`_scheduler_loop`) re-crawls every `CRAWL_INTERVAL_HOURS`
-  (default 24). The last run time is persisted to `data/crawl_state.json`, so
-  restarting the server does **not** trigger an immediate re-crawl.
-- **Description cache** — every crawled job is stored in the `job_cache` table
-  (`JobCacheService`) with a `hits` counter that climbs each time the posting
-  re-appears or a user opens it. `GET /api/jobs/cached` returns the hottest
-  descriptions, ranked by hits.
-- **Cache-first search** — a *user*-initiated search reuses cached descriptions
-  when the role was crawled within `JOB_CACHE_TTL_HOURS` (no network hit). The
-  *scheduled* daily crawl runs with `CRAWL_FORCE_FRESH=1` so it always bypasses
-  the cache and refreshes it. Set `JOB_CACHE_TTL_HOURS=0` to always crawl live.
+Separately from the agent crawl, **discovery** (`node main.js discover` or the
+dashboard's *Discover* button) pulls open roles straight from company ATS APIs —
+Greenhouse, Lever, Ashby, Workday, plus RemoteOK — classifies them into 16 job
+types, and caches them. No browser or LLM needed.
 
 ---
 
@@ -65,130 +56,91 @@ applying yourself.
 
 ```
 job-apply-agent/
-├── main.py                       # CLI: crawl | status | help (forces UTF-8 on Windows)
-├── requirements.txt
-├── .env.example                  # copy to .env
+├── main.js                        # CLI: crawl | discover | status | help
+├── package.json                   # backend deps + build:ui / dev:ui scripts
+├── Dockerfile                     # Node + LaTeX image; builds the React UI
+├── .env.example                   # copy to .env
+├── frontend/                      # React dashboard (Vite)
+│   ├── vite.config.js             # builds into web/static/dist
+│   └── src/
+│       ├── App.jsx                # layout, stats, filters, crawl lifecycle hook
+│       ├── JobCard.jsx            # application card + status dropdown
+│       ├── modals/                # JobModal, CrawlModal, DiscoverModal, ImportModal
+│       ├── api.js                 # authed fetch + download tickets
+│       ├── ui.jsx                 # Modal/Icon/Toast primitives
+│       └── styles.css             # the design system (dark, violet accent)
 ├── data/
-│   ├── profile.json              # YOUR info, skills, experience, preferences (edit this)
-│   ├── applications.db           # SQLite: applications tracker + job_cache (generated)
-│   ├── crawl_state.json          # last auto-crawl timestamp (generated at runtime)
-│   └── applications.json.migrated# legacy JSON, auto-migrated into the DB once
-├── resumes/                      # generated tailored PDFs
-│   └── imported/                 # LaTeX resumes re-rendered via the template (.tex + .pdf)
+│   ├── profile.json               # YOUR info, skills, preferences (edit this)
+│   ├── companies.json             # ATS board tokens for discovery
+│   └── applications.db            # SQLite: applications, job_cache, roles, meta (generated)
+├── resumes/                       # generated tailored PDFs (+ imported/)
 ├── src/
-│   ├── config.py                 # loads .env into a Config object (incl. auth + JWT)
-│   ├── models.py                 # Pydantic models + load_profile()
-│   ├── interfaces/
-│   │   ├── job_source.py         # JobSource ABC: source_name + search()
-│   │   └── resume_customizer.py  # ResumeCustomizer ABC: customize()
+│   ├── config.js                  # .env → Config
+│   ├── models.js                  # job/profile shapes + validation
+│   ├── interfaces/                # JobSource + ResumeCustomizer contracts
 │   ├── strategies/
-│   │   ├── sources/
-│   │   │   ├── indeed_source.py    # Playwright scraper — Indeed India
-│   │   │   ├── remoteok_source.py  # API source — RemoteOK public JSON feed
-│   │   │   └── naukri_source.py    # reference only (Akamai-blocked, NOT wired in)
-│   │   └── customizers/
-│   │       └── ollama_customizer.py# local-LLM resume tailoring
+│   │   ├── sources/               # indeed, remoteok, greenhouse, lever, ashby, workday
+│   │   └── customizers/           # ollamaCustomizer (LLM tailoring)
 │   ├── services/
-│   │   ├── crawler_service.py    # orchestrates JobSource strategies, dedupes by id
-│   │   ├── resume_service.py     # customize → render PDF
-│   │   ├── job_cache_service.py  # SQLite job_cache: hit-ranked descriptions + freshness
-│   │   └── tracker_service.py    # SQLite persistence + JSON→DB migration
-│   ├── agent/
-│   │   ├── orchestrator.py       # the tool-calling agent loop
-│   │   └── tools.py              # search_jobs / process_job / get_applications + DI wiring
-│   ├── resume/
-│   │   ├── generator.py          # HTML resume template → PDF via Playwright (per-job tailoring)
-│   │   ├── latex_template.py     # render structured data → Friggeri LaTeX template (escaped)
-│   │   └── latex_importer.py     # LLM extract uploaded .tex → render template → compile PDF
-│   └── utils/job_filter.py       # role/keyword/company filtering
+│   │   ├── crawlerService.js      # orchestrates JobSource strategies
+│   │   ├── discoveryService.js    # multi-ATS fan-out + classify
+│   │   ├── jobClassifier.js       # rule-based job-type taxonomy (16 types)
+│   │   ├── jobCacheService.js     # hit-ranked description cache + prune()
+│   │   ├── trackerService.js      # applications tracker (SQL-side filtering)
+│   │   ├── roleService.js         # target roles + crawl due-times
+│   │   ├── metaService.js         # key/value state in the DB (replaces JSON files)
+│   │   ├── crawlRunner.js         # crawl subprocess + capped incremental log
+│   │   ├── discoveryRunner.js     # in-process discovery runner
+│   │   ├── scheduler.js           # daily auto-crawl + auto-discover
+│   │   └── llm.js                 # Ollama-first LLM resolution + hosted fallback
+│   ├── agent/                     # tool-calling orchestrator + tool defs (DI wiring)
+│   ├── resume/                    # HTML→PDF generator, LaTeX template, importer, variants
+│   └── utils/jobFilter.js         # role/keyword/company filtering
 └── web/
-    ├── server.py                 # FastAPI backend + background crawl runner + daily scheduler
-    ├── auth.py                   # single-user JWT auth (bcrypt) + require_auth dependency
+    ├── server.js                  # Express composition root
+    ├── auth.js                    # JWT (admin/user tiers) + 60s download tickets
+    ├── httpError.js, rateLimit.js # shared middleware helpers
+    ├── routes/                    # auth, llm, applications, resume, jobs, crawl
     └── static/
-        ├── landing.html          # animated "Apsis" landing page (/)
-        ├── login.html            # JWT login page (/login)
-        └── index.html            # dashboard SPA (/dashboard, gated by login)
+        ├── landing.html           # animated "Apsis" landing page (/)
+        ├── login.html             # login page (/login)
+        └── dist/                  # built React dashboard (/dashboard) — generated
 ```
 
 ---
 
-## Two implementations: Python and Node.js
+## Setup
 
-This repo ships the **same app twice** — the original Python version and a
-line-for-line **Node.js/JavaScript port**. They are behaviour-compatible and
-share the same `data/applications.db`, `data/profile.json`, and `web/static/`
-frontend (the UI is byte-identical — the JS server just serves the same HTML).
-
-| Concern        | Python                    | Node.js (`.js`)              |
-| -------------- | ------------------------- | ---------------------------- |
-| CLI entry      | `main.py`                 | `main.js`                    |
-| Web framework  | FastAPI + uvicorn         | Express                      |
-| DB driver      | `sqlite3`                 | `better-sqlite3`             |
-| LLM client     | `openai` (AsyncOpenAI)    | `openai` (Node SDK)          |
-| Scraping / PDF | Playwright (Python)       | Playwright (Node)            |
-| Auth           | PyJWT + bcrypt            | `jsonwebtoken` + `bcryptjs`  |
-| File uploads   | `python-multipart`        | `multer`                     |
-
-The JS module tree mirrors the Python one (`src/config.js`, `src/models.js`,
-`src/services/*.js`, `src/strategies/**/*.js`, `src/resume/*.js`,
-`src/agent/*.js`, `web/server.js`, `web/auth.js`). Filenames use `camelCase`
-(`trackerService.js`) where Python used `snake_case` (`tracker_service.py`).
-
-### Run the Node.js version
-
-Requires **Node.js 20+**, a running [Ollama](https://ollama.com) instance, and —
-for the LaTeX import feature — `pdflatex` ([MiKTeX](https://miktex.org)/TeX Live).
+Requires **Node.js 20+**. Optional: [Ollama](https://ollama.com) for a free local
+LLM (otherwise paste a free hosted API key in the dashboard), and
+`pdflatex` ([MiKTeX](https://miktex.org)/TeX Live) for the resume-import feature.
 
 ```bash
-# 1. Install dependencies (reads package.json)
+# 1. Backend deps
 npm install
 
-# 2. Install the Playwright browser (scraping + PDF rendering)
+# 2. Playwright browser (Indeed scraping + PDF rendering)
 npx playwright install chromium
 
-# 3. Configure (same .env as the Python version)
-cp .env.example .env
+# 3. Build the React dashboard
+npm run build:ui
 
-# 4. Pull a model and start Ollama
+# 4. Configure
+cp .env.example .env        # then edit — change the login credentials!
+
+# 5. (Optional) local LLM
 ollama pull qwen2.5:7b && ollama serve
 
-# 5. Use it
-node main.js crawl          # or: npm run crawl
-node main.js status         # or: npm run status
-node web/server.js          # dashboard on http://localhost:8080 (or: npm start)
+# 6. Edit your profile
+#    data/profile.json — personal info, skills, and preferences
+#    (preferences.roles / locations drive the crawl)
 ```
 
-The daily auto-crawl scheduler starts automatically when `web/server.js` boots
-(`AUTO_CRAWL=true`). The background crawl spawns `node main.js crawl` with
-`CRAWL_FORCE_FRESH=1` so it always refreshes the cache. The `PORT` env var
-overrides the default `8080`.
+### Frontend development
 
----
-
-## Setup (Python version)
-
-Requires **Python 3.10+** (uses `match` statements), a running
-[Ollama](https://ollama.com) instance, and — for the LaTeX import feature — a
-LaTeX distribution providing `pdflatex` ([MiKTeX](https://miktex.org) or TeX Live).
-
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Install the Playwright browser (used for scraping + PDF rendering)
-playwright install chromium
-
-# 3. Configure
-cp .env.example .env        # then edit if needed
-
-# 4. Pull a model and start Ollama
-ollama pull qwen2.5:7b
-ollama serve
-
-# 5. Edit your profile
-#    data/profile.json  — personal info, skills, experience, and preferences
-#    (preferences.roles / locations drive the crawl; avoid_keywords / avoid_companies filter it out)
-```
+`npm run dev:ui` starts Vite's dev server with hot reload (proxies `/api` to a
+backend running on port 8080). `npm run build:ui` rebuilds `web/static/dist`,
+which Express serves at `/dashboard`. The Docker image builds the UI itself.
 
 ### Configuration (`.env`)
 
@@ -196,20 +148,20 @@ ollama serve
 | -------------------- | ------------------------------ | ---------------------------------------------- |
 | `OLLAMA_URL`         | `http://localhost:11434/v1`    | OpenAI-compatible Ollama endpoint              |
 | `OLLAMA_MODEL`       | `qwen2.5:7b`                   | Model for the agent + resume customizer        |
+| `LLM_PROVIDER` / `LLM_API_KEY` | `groq` / —           | Hosted fallback when Ollama is down (free keys: Groq/OpenRouter/Gemini/Cerebras) |
 | `CRAWLER_DELAY_MS`   | `2500`                         | Rate-limit delay between requests              |
 | `MAX_JOBS_PER_RUN`   | `20`                           | Cap on jobs processed per crawl                |
 | `CRAWLER_HEADFUL`    | `false`                        | `true` shows the browser while scraping        |
 | `AUTO_CRAWL`         | `true`                         | Run the background daily crawl when the server is up |
 | `AUTO_DISCOVER`      | `true`                         | Also run multi-source discovery on the same schedule (no browser/LLM needed) |
 | `CRAWL_INTERVAL_HOURS` | `24`                         | How often the auto-crawl runs                  |
-| `JOB_CACHE_PRUNE_DAYS` | `14`                         | Prune cached jobs unseen for this many days (`0` = never) |
 | `JOB_CACHE_TTL_HOURS`| `24`                           | How long cached descriptions are served without re-crawling (`0` = always live) |
-| `AUTH_USERNAME`      | `admin`                        | Dashboard login username — **change it**       |
-| `AUTH_PASSWORD`      | `changeme`                     | Dashboard login password — **change it**       |
-| `JWT_SECRET`         | `dev-insecure-secret-change-me`| Secret used to sign JWTs — set a long random string |
+| `JOB_CACHE_PRUNE_DAYS` | `14`                         | Prune cached jobs unseen for this many days (`0` = never) |
+| `MAX_JOBS_PER_COMPANY` | `25`                         | Cap jobs pulled per company board in discovery |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | `admin` / `changeme` | Admin login — **default password blocks boot in production** |
+| `USER_USERNAME` / `USER_PASSWORD` | `user` / `user` | Regular login (crawl rate-limited to once per interval) |
+| `JWT_SECRET`         | *(dev default)*                | Signs JWTs — **default blocks boot in production** |
 | `JWT_EXPIRE_HOURS`   | `12`                           | How long a login stays valid                   |
-| `EMAIL_USER` / `EMAIL_APP_PASSWORD` | —               | Reserved for email-based applications          |
-| `ANTHROPIC_API_KEY`  | —                              | Optional, for higher-quality resume tailoring  |
 
 ---
 
@@ -218,80 +170,63 @@ ollama serve
 ### CLI
 
 ```bash
-python main.py crawl     # search jobs, tailor resumes, save to the tracker
-python main.py status    # show tracked applications in a table
-python main.py help      # show commands and setup steps
+node main.js crawl       # agent: search jobs, tailor resumes, save to the tracker
+node main.js discover    # fetch from all ATS sources, classify, cache
+node main.js status      # show tracked applications in a table
 ```
-
-`crawl` reads your target roles/locations from `data/profile.json`, runs the
-agent across **Indeed India + RemoteOK**, and writes tailored PDFs to `resumes/`.
 
 ### Web dashboard
 
 ```bash
-uvicorn web.server:app --port 8080
+npm start                # http://localhost:8080  (PORT env overrides)
 ```
 
-- `http://localhost:8080/`          → landing page
-- `http://localhost:8080/login`     → sign in (uses `AUTH_USERNAME` / `AUTH_PASSWORD`)
-- `http://localhost:8080/dashboard` → the app (redirects to `/login` if not signed in)
+- `/`          → landing page
+- `/login`     → sign in (admin or user account from `.env`)
+- `/dashboard` → the React app
 
-The dashboard lists every tracked application with search, source, and status
-filters; lets you update status / delete entries; streams the resume PDF; and can
-kick off a crawl in the background (`POST /api/crawl`) with a live log poll.
+The dashboard shows your pipeline with clickable stat filters, search/source/sort,
+job-details popups, a Discover browser (filter all cached jobs by type), a New
+Crawl modal (pick roles; non-admins are gated to one crawl per interval), live
+crawl logs (incremental `?since=` polling), and Create Resume (paste text →
+PDF + optional per-role ATS variants). While the server runs, it auto-crawls and
+auto-discovers daily and prunes the cache.
 
-While the server is running it also **auto-crawls every 24h** (`AUTO_CRAWL`) and
-caches job descriptions, so `GET /api/jobs/cached` serves the most-used listings
-with no crawl. Check `GET /api/crawl/schedule` for the last/next run time.
+### Login & downloads (JWT)
 
-> Tip: use a fresh port if a previous dev run left a socket bound.
-
-### Login (JWT)
-
-Every API route except `/api/login` requires a JWT. Sign in at `/login`; the token
-is stored in the browser and sent as `Authorization: Bearer <token>` on each
-request (file downloads use a `?token=` query param instead, since `<a>` links
-can't set headers). It's a single user — credentials come from `.env`, the password
-is bcrypt-hashed at startup. Logging in is also available via the API:
-
-```bash
-curl -X POST localhost:8080/api/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"changeme"}'
-# → {"token":"…","username":"admin"}
-```
-
-### Import a LaTeX resume into the template
-
-Click **Import Resume** in the dashboard and upload your résumé as a `.tex` file.
-The local LLM (qwen) **extracts** the content into structured JSON, which is then
-deterministically **rendered** into the bundled Friggeri template (the one based on
-`tanay_agrawal_resume.tex`) and **compiled** to PDF with `pdflatex`. You get both
-the generated `.tex` and `.pdf` to download. Outputs are saved in `resumes/imported/`.
-
-Keeping extraction (LLM) separate from rendering (code) means the model only ever
-returns JSON — never raw LaTeX — so the output always compiles, with all special
-characters (`& % $ # _ { } ~ ^`) safely escaped.
+Every API route except `/api/login` requires a JWT (`Authorization: Bearer`).
+Two accounts: **admin** (always may crawl) and **user** (once per interval).
+`/api/login` is rate-limited (10 tries / 15 min per IP). File downloads use
+**60-second single-purpose tickets** from `GET /api/download-ticket` — the
+session token itself is never placed in a URL.
 
 #### API endpoints
 
 | Method   | Path                                | Auth | Description                          |
 | -------- | ----------------------------------- | :--: | ------------------------------------ |
-| `POST`   | `/api/login`                        |  —   | Exchange credentials for a JWT       |
-| `GET`    | `/api/me`                           |  ✓   | Current user from the token          |
-| `GET`    | `/api/stats`                        |  ✓   | Counts by status                     |
-| `GET`    | `/api/applications`                 |  ✓   | List (filter: status/source/search/sort) |
+| `POST`   | `/api/login`                        |  —   | Exchange credentials for a JWT (rate-limited) |
+| `GET`    | `/api/me`                           |  ✓   | Current user + role                  |
+| `GET`    | `/api/download-ticket`              |  ✓   | 60s token for `?token=` file downloads |
+| `GET`    | `/api/stats`                        |  ✓   | Counts by status (SQL)               |
+| `GET`    | `/api/applications`                 |  ✓   | List (filter: status/source/search/sort, in SQL) |
 | `PATCH`  | `/api/applications/{id}/status`     |  ✓   | Update status + notes                |
 | `DELETE` | `/api/applications/{id}`            |  ✓   | Remove an application                |
 | `GET`    | `/api/resume/{id}`                  |  ✓   | Stream the tailored PDF              |
-| `POST`   | `/api/resume/import`                |  ✓   | Upload a `.tex`, get template `.tex` + PDF |
+| `POST`   | `/api/resume/import`                |  ✓   | Paste text / upload `.tex` → template PDF (+ variants via `roles: []`) |
 | `GET`    | `/api/resume/import/list`           |  ✓   | List previously imported resumes     |
 | `GET`    | `/api/resume/import/file/{name}`    |  ✓   | Download a generated `.tex` / `.pdf` |
-| `GET`    | `/api/jobs/cached`                  |  ✓   | Most-used cached job descriptions (hit-ranked) |
-| `GET`    | `/api/jobs/cached/{id}`             |  ✓   | One cached description (counts as a hit) |
-| `POST`   | `/api/crawl`                        |  ✓   | Start a background crawl (always fresh) |
-| `GET`    | `/api/crawl/status`                 |  ✓   | Poll the running crawl's live log    |
-| `GET`    | `/api/crawl/schedule`               |  ✓   | Auto-crawl config + last/next run time |
+| `GET`    | `/api/jobs/cached`                  |  ✓   | Most-used cached job descriptions    |
+| `GET`    | `/api/jobs/cached/{id}`             |  ✓   | One cached description (counts a hit) |
+| `GET`    | `/api/job-types`                    |  ✓   | Taxonomy with live counts            |
+| `GET`    | `/api/jobs?types=a,b&search=`       |  ✓   | Cached jobs filtered by type, grouped |
+| `POST`   | `/api/jobs/refresh`                 |  ✓   | Run discovery now                    |
+| `GET`    | `/api/jobs/refresh/status`          |  ✓   | Discovery status (`?since=` incremental log) |
+| `GET/POST/DELETE` | `/api/roles[/{id}]`        |  ✓   | Manage target roles                  |
+| `POST`   | `/api/crawl`                        |  ✓   | Start a crawl (`roles: []` subset; 24h gate for users) |
+| `GET`    | `/api/crawl/status`                 |  ✓   | Crawl status (`?since=` incremental log) |
+| `GET`    | `/api/crawl/schedule`               |  ✓   | Auto-crawl config + last/next run    |
+| `GET`    | `/api/llm/status`                   |  ✓   | Which AI backend is active           |
+| `POST/DELETE` | `/api/llm/token`               | admin | Set/clear a hosted AI token         |
 
 Application statuses: `not_applied`, `applied`, `interview`, `offer`, `rejected`.
 
@@ -301,41 +236,32 @@ Application statuses: `not_applied`, `applied`, `interview`, `offer`, `rejected`
 
 **Add a new job board** — implement the `JobSource` interface and inject it:
 
-```python
-# src/strategies/sources/my_source.py
-class MySource(JobSource):
-    @property
-    def source_name(self) -> str: ...
-    async def search(self, role: str, location: str, pages: int) -> list[Job]: ...
+```js
+// src/strategies/sources/mySource.js
+class MySource {
+  get sourceName() { /* ... */ }
+  async search(role, location, pages) { /* → [Job] */ }
+}
 ```
 
-Then add it to the list in `src/agent/tools.py`:
+Then add it to the list in `src/agent/tools.js` (agent crawl) or
+`src/services/discoveryService.js` (discovery).
 
-```python
-_crawler = CrawlerService([IndeedSource(), RemoteOKSource(), MySource()])
-```
-
-**Swap the resume LLM** — implement `ResumeCustomizer.customize(...)` and inject it
-into `ResumeService` the same way.
+**Swap the resume LLM** — implement `ResumeCustomizer.customize(...)` and inject
+it into `ResumeService` the same way.
 
 ---
 
 ## Notes & known limitations
 
-- **Naukri** is Akamai-blocked from headless browsers (`Access Denied` at the edge);
-  `naukri_source.py` is kept for reference but is not wired into the crawler.
-- **Indeed** detail pages (`viewjob`) are bot-challenged, so job descriptions can
-  come back empty; company/location are read from the result row instead.
-- The tracker auto-migrates a legacy `data/applications.json` into SQLite on first
-  run, then renames it to `.json.migrated` so it isn't re-imported.
-- On Windows, `main.py` forces UTF-8 on stdout/stderr because the default cp1252
-  console crashes on Unicode characters (`→`, `•`) used throughout the output.
-- The **auto-crawl scheduler** only runs while `web/server.py` is up; the CLI
-  `python main.py crawl` is still a one-shot. The scheduler checks every 15 min and
-  fires when `now - last_run >= CRAWL_INTERVAL_HOURS`.
-- The **job cache** shares `applications.db` (table `job_cache`), separate from the
-  `applications` tracker table. Deleting `data/crawl_state.json` makes the next
-  server start crawl immediately.
+- **Naukri** is Akamai-blocked from headless browsers; `naukriSource.js` is kept
+  for reference but is not wired into the crawler.
+- **Indeed** detail pages are bot-challenged, so job descriptions can come back
+  empty; company/location are read from the result row instead.
+- Runtime state (crawl last-run, saved AI token) lives in the DB `meta` table;
+  legacy `crawl_state.json` / `llm.json` files are auto-migrated once.
+- The scheduler only runs while the web server is up; the CLI is one-shot.
+- The server assumes a **single instance** (in-memory crawl/discovery state).
 
 ---
 
@@ -568,3 +494,23 @@ pruning, scheduler discovery, security hardening (JS)**
   ranking or a relevance filter.
 - Surface roles (with due/next_due) in the dashboard UI — API is ready.
 - Consider exposing `hits`/`last_seen_at` in the dashboard for a "trending roles" view.
+
+**State (2026-07-09, pt2): React frontend + Python removed**
+
+- **Dashboard rewritten in React 18 + Vite** (`frontend/`), replacing the
+  1,600-line static `web/static/index.html` (deleted). Custom CSS design system
+  (no Tailwind CDN). Components: `App.jsx` (stats/filters/crawl hook),
+  `JobCard.jsx`, modals for job details / crawl / discover / create-resume.
+  Build output → `web/static/dist` (gitignored); Express serves it at
+  `/dashboard` (503 with instructions if unbuilt). `npm run build:ui` locally;
+  the Dockerfile builds it in-image. `npm run dev:ui` = Vite dev + /api proxy.
+- **UI improvements**: clickable stat tiles filter the list, sticky blurred
+  header (icon-only buttons <640px), Esc/backdrop closes modals, loading
+  skeletons, per-card status dropdown, live crawl log with auto-scroll +
+  crawl state survives closing the modal, source filter built from data,
+  responsive at 400px with no horizontal scroll.
+- **Python implementation deleted** (`python/` was untracked/archived; JS is
+  the only implementation now). README rewritten accordingly.
+- **Verified**: 15-check Playwright suite green (auth redirect, cards, stat
+  filter, popup open/Esc, search empty-state, Discover chips + row popup,
+  textarea radius, crawl modal, 400px no-h-scroll, zero console errors).

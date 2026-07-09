@@ -8,7 +8,9 @@
     "crawl": "node main.js crawl",
     "status": "node main.js status",
     "start": "node web/server.js",
-    "serve": "node web/server.js"
+    "serve": "node web/server.js",
+    "build:ui": "npm --prefix frontend install && npm --prefix frontend run build",
+    "dev:ui": "npm --prefix frontend run dev"
   },
   "engines": {
     "node": ">=20"

@@ -6,6 +6,7 @@
  * Route logic lives in web/routes/*; background jobs in src/services/*Runner.
  */
 
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 
@@ -30,7 +31,16 @@ app.use('/static', express.static(STATIC_DIR));
 
 app.get('/', (req, res) => res.sendFile(path.join(STATIC_DIR, 'landing.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(STATIC_DIR, 'login.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(STATIC_DIR, 'index.html')));
+
+// The dashboard is a React app built by Vite into web/static/dist
+// (assets load from /static/dist/, which express.static above serves).
+app.get('/dashboard', (req, res) => {
+  const built = path.join(STATIC_DIR, 'dist', 'index.html');
+  if (fs.existsSync(built)) return res.sendFile(built);
+  return res
+    .status(503)
+    .send('Dashboard build missing — run: npm run build:ui (see README).');
+});
 
 // ── API routes ───────────────────────────────────────────────────────────────
 

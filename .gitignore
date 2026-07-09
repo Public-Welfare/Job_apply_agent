@@ -27,10 +27,8 @@ docs/*.pdf
 docs/*.aux
 docs/*.log
 
-# Python implementation (archived locally, not tracked)
-python/
-__pycache__/
-*.pyc
+# React build output (built in Docker / via `npm run build:ui`)
+web/static/dist/
 
 # OS / editor cruft
 .DS_Store

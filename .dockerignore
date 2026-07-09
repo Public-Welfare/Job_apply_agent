@@ -1,8 +1,9 @@
 # Never copy host node_modules — better-sqlite3 is built for the host OS.
 node_modules
+frontend/node_modules
 
-# Python implementation is not part of the Node deploy.
-python
+# The dashboard is built inside the image (see Dockerfile).
+web/static/dist
 
 # Docs / local-only
 docs

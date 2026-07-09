@@ -25,8 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# App source (node_modules, python/, secrets excluded via .dockerignore).
+# App source (node_modules, secrets excluded via .dockerignore).
 COPY . .
+
+# Build the React dashboard (Vite) into web/static/dist, then drop its deps.
+RUN npm --prefix frontend ci && npm --prefix frontend run build \
+    && rm -rf frontend/node_modules
 
 # Railway injects PORT at runtime; the server reads process.env.PORT (default 8080).
 EXPOSE 8080
